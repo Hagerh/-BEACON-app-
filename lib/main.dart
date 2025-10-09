@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
+import 'presentation/router.dart';
 
 void main() {
   runApp(const MyApp());
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
       ),
       ),
       home: const LandingScreen(),
+      onGenerateRoute: AppRouter.generateRoute,
     );
   }
 }

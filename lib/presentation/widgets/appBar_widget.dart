@@ -10,14 +10,13 @@ class AppbarWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
+      height: 290,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFFFE6E6),
-            Color(0xFFE0F7FA),
-          ],
+          colors: [Color(0xFFFFE6E6), Color(0xFFE0F7FA)],
         ),
 
         boxShadow: [
@@ -29,19 +28,22 @@ class AppbarWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           BeaconLogo(),
+          SizedBox(height: 10,),
           Flexible(
             child: Text(
               "Offline Emergency Communication Network",
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 overflow: TextOverflow.ellipsis,
               ),
+
             ),
           ),
         ],

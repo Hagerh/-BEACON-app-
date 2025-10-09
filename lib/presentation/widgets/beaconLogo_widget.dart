@@ -12,12 +12,12 @@ class BeaconLogo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
 
       children: [
-        const SizedBox(height:20,),
+        const SizedBox(height:20),
         Stack(
           alignment: Alignment.center,
           children: [
-            Icon(Icons.wifi_tethering, size: 40, color: AppColors.connectionTeal),
-            Icon(Icons.circle, size: 10, color: AppColors.alertRed),
+            Icon(Icons.wifi_tethering, size: 50, color: AppColors.connectionTeal),
+            Icon(Icons.circle, size: 20, color: AppColors.alertRed),
           ],
         ),
 
@@ -25,7 +25,7 @@ class BeaconLogo extends StatelessWidget {
           "BEACON",
           style: TextStyle(
             color: AppColors.textPrimary,
-            fontSize: 10,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
           ),
@@ -34,7 +34,7 @@ class BeaconLogo extends StatelessWidget {
           "Stay Connected. Stay Safe.",
           style: TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 4,
+            fontSize: 10,
           ),
         ),
       ],
