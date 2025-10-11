@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:projectdemo/constants/settings.dart';
+import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'screens/landing_screen.dart';
-import 'screens/chat_screen.dart';
 import 'screens/networkDashboard_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/resourceSharing_screen.dart';
 
 class AppRouter {
-  static Route<dynamic> generateRoute(RouteSettings settings) {
+  static Route? generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case '/':
+      case landingScreen:
         return MaterialPageRoute(builder: (_) => const LandingScreen());
 
-      case '/network':
+      case networkScreen:
         return MaterialPageRoute(
           builder: (_) => const NetworkDashboardScreen(),
         );
 
+      case profileScreen:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
 
       default:
         return MaterialPageRoute(

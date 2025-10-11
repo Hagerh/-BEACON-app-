@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
-
 import '../../constants/colors.dart';
-import '../widgets/appBar_widget.dart';
-import '../widgets/beaconLogo_widget.dart';
+
 
 class NetworkDashboardScreen extends StatefulWidget {
   const NetworkDashboardScreen({super.key});
@@ -16,10 +13,18 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.safeGreen,
-          title: Text("Stay connected, Stay safe"),
+         appBar: AppBar(
+        title: const Text("Connected Network "),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color.fromARGB(255, 235, 200, 200), Color.fromARGB(255, 164, 236, 246)],
+            ),
+          ),
         ),
+      ),
         body:Column(
           children: [
             Text("data"),

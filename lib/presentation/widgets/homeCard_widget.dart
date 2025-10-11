@@ -1,11 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../constants/colors.dart';
 import 'beaconLogo_widget.dart';
 
-class AppbarWidget extends StatelessWidget {
-  const AppbarWidget({super.key});
+class HomecardWidget extends StatelessWidget {
+  const HomecardWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

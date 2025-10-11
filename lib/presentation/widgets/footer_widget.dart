@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:projectdemo/constants/settings.dart';
 import '../../constants/colors.dart';
 
 class FooterWidget extends StatelessWidget {
@@ -10,13 +11,13 @@ class FooterWidget extends StatelessWidget {
     if (index == currentPage) return;
     switch (index) {
       case 0:
-        Navigator.pushNamed(context, '/');
+        Navigator.pushReplacementNamed(context, landingScreen, );
         break;
       case 1:
-        Navigator.pushNamed(context, '/resources');
+        Navigator.pushReplacementNamed(context, resourceScreen);
         break;
       case 2:
-        Navigator.pushNamed(context, '/profile');
+        Navigator.pushReplacementNamed(context, profileScreen);
         break;
     }
   }

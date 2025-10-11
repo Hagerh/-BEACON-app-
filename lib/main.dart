@@ -4,11 +4,12 @@ import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'presentation/router.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp(appRouter: AppRouter(),));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AppRouter appRouter;
+  const MyApp({super.key, required this.appRouter });
 
   @override
   Widget build(BuildContext context) {
