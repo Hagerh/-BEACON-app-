@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
-import 'presentation/router.dart';
+import 'package:projectdemo/presentation/screens/networkDashboard_screen.dart';
+import 'package:projectdemo/presentation/screens/profile_screen.dart';
+import 'package:projectdemo/constants/settings.dart';
 
 void main() {
-  runApp(MyApp(appRouter: AppRouter(),));
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final AppRouter appRouter;
-  const MyApp({super.key, required this.appRouter });
+  
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +31,15 @@ class MyApp extends StatelessWidget {
           onSurface: AppColors.textSecondary,
       ),
       ),
-      home: const LandingScreen(),
-      onGenerateRoute: AppRouter.generateRoute,
+      initialRoute: '/',
+      routes:{
+        landingScreen: (context) => LandingScreen(),
+        networkScreen: (context) => NetworkDashboardScreen(),
+        profileScreen: (context) => ProfileScreen(),
+       // '/chat': (context) => ChatScreen(),
+        //'/resources': (context) => ResourceScreen(),
+      },
+      
     );
   }
 }

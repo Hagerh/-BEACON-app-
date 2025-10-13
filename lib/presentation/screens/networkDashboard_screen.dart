@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../constants/colors.dart';
+
 
 
 class NetworkDashboardScreen extends StatefulWidget {
@@ -25,11 +25,28 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
           ),
         ),
       ),
-        body:Column(
+        body:ListView(
+          padding: const EdgeInsets.all(16.0),
           children: [
-            Text("data"),
+            ListTile(
+              title: Text('Beacon Node Alpha'),
+              subtitle: Text('Status: Connected'),
+              
+            ),
+            SizedBox(height: 16),
+            ListTile(
+            
+              title: Text('CDVC-103'),
+              subtitle: Text('5 devices connected'),
+            ),
+            SizedBox(height: 16),
+            ListTile(
+              
+              title: Text('DVC-103'),
+              subtitle: Text('Used: 1.2 GB / 5 GB'),
+            ),
           ],
-        )
+        ),
     );
   }
 }

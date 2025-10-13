@@ -24,6 +24,7 @@ class LandingScreen extends StatelessWidget {
           ),
         ),
       ),
+     
       body: Column(
         children: [
           HomecardWidget(),
@@ -56,13 +57,16 @@ class LandingScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+             
               ],
+              
             ),
           ),
         ],
       ),
       floatingActionButton: const VoiceWidget(),
       bottomNavigationBar: const FooterWidget(currentPage: 0),
+      
     );
   }
 }
