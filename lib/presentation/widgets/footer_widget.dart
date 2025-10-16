@@ -20,6 +20,7 @@ class FooterWidget extends StatelessWidget {
       case 2:
         Navigator.pushReplacementNamed(context, profileScreen);
         break;
+     
     }
   }
 

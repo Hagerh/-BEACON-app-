@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
-import 'package:projectdemo/presentation/screens/networkDashboard_screen.dart';
+import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes:{
         landingScreen: (context) => LandingScreen(),
-        networkScreen: (context) => NetworkDashboardScreen(),
+        networkScreen: (context) => Joinnetworkscreen(),
         profileScreen: (context) => ProfileScreen(),
        // '/chat': (context) => ChatScreen(),
         //'/resources': (context) => ResourceScreen(),

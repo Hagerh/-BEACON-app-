@@ -25,44 +25,46 @@ class LandingScreen extends StatelessWidget {
         ),
       ),
      
-      body: Column(
-        children: [
-          HomecardWidget(),
-          SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/network');
-                    },
-                    child: LandingpagebuttonsWidget(
-                      text: "join\nNetwork",
-                      icon: Icons.wifi,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            HomecardWidget(),
+            SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/network');
+                      },
+                      child: LandingpagebuttonsWidget(
+                        text: "join\nNetwork",
+                        icon: Icons.wifi,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 20),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      // TODO: handle Create action
-                    },
-                    child: LandingpagebuttonsWidget(
-                      text: "Create\nNetwork",
-                      icon: Icons.add_circle_outline,
+                  SizedBox(width: 20),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        // TODO: handle Create action
+                      },
+                      child: LandingpagebuttonsWidget(
+                        text: "Create\nNetwork",
+                        icon: Icons.add_circle_outline,
+                      ),
                     ),
                   ),
-                ),
-             
-              ],
-              
+               
+                ],
+                
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: const VoiceWidget(),
       bottomNavigationBar: const FooterWidget(currentPage: 0),
