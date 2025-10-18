@@ -38,8 +38,8 @@ class MyApp extends StatelessWidget {
         networkScreen: (context) => Joinnetworkscreen(),
         createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) => ProfileScreen(),
-        networkDashboardScreen: (context) => NetworkDashboardScreen(),
-        chatScreen: (context) => ChatScreen(),
+        // networkDashboardScreen: (context) => NetworkDashboardScreen(),
+        // chatScreen: (context) => ChatScreen(),
         resourceScreen: (context) => ResourceSharingScreen(),
       },
     );

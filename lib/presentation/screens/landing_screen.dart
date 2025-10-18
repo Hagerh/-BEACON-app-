@@ -38,7 +38,11 @@ class LandingScreen extends StatelessWidget {
             child: isPortrait
                 ? Column(
                     children: [
-                      HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                      HomecardWidget(
+                        width: width,
+                        height: height,
+                        isPortrait: isPortrait,
+                      ),
                       SizedBox(height: height * 0.03),
                       Padding(
                         padding: EdgeInsets.all(height * 0.02),
@@ -64,13 +68,17 @@ class LandingScreen extends StatelessWidget {
                     ],
                   )
                 : IntrinsicHeight(
-                  child: Column(
+                    child: Column(
                       children: [
-                        HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                        HomecardWidget(
+                          width: width,
+                          height: height,
+                          isPortrait: isPortrait,
+                        ),
                         SizedBox(width: 24),
                         Expanded(
                           child: Padding(
-                            padding: EdgeInsets.all(width* 0.02),
+                            padding: EdgeInsets.all(width * 0.02),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -93,7 +101,7 @@ class LandingScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                ),
+                  ),
           );
         },
       ),
@@ -119,7 +127,7 @@ class LandingScreen extends StatelessWidget {
   Widget createNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
-          // TODO: handle Create action
+          Navigator.pushNamed(context, '/create_network');
         },
         child: LandingpagebuttonsWidget(
           text: "Create\nNetwork",
