@@ -49,7 +49,7 @@ class ResourceSharingScreen extends StatelessWidget {
           child: Column(
             children: [
               const Text(
-                "Request or Offer Essential Resources",
+                "Request Essential Resources",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
