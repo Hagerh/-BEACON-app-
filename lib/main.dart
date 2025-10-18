@@ -43,6 +43,7 @@ class MyApp extends StatelessWidget {
         profileScreen: (context) => ProfileScreen(),
         publicChatScreen: (context) => PublicChatScreen(),
         chatScreen: (context) => PrivatechatScreen(),
+
         resourceScreen: (context) => ResourceSharingScreen(),
       },
     );

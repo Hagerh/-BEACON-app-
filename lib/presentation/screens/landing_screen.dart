@@ -38,21 +38,25 @@ class LandingScreen extends StatelessWidget {
             child: isPortrait
                 ? Column(
                     children: [
-                      HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                      HomecardWidget(
+                        width: width,
+                        height: height,
+                        isPortrait: isPortrait,
+                      ),
                       SizedBox(height: height * 0.03),
                       Padding(
                         padding: EdgeInsets.all(height * 0.02),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            joinNetworkButton(
+                            _joinNetworkButton(
                               context,
                               width,
                               height,
                               isPortrait,
                             ),
                             SizedBox(width: width * 0.05),
-                            createNetworkButton(
+                            _createNetworkButton(
                               context,
                               width,
                               height,
@@ -64,24 +68,28 @@ class LandingScreen extends StatelessWidget {
                     ],
                   )
                 : IntrinsicHeight(
-                  child: Column(
+                    child: Column(
                       children: [
-                        HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                        HomecardWidget(
+                          width: width,
+                          height: height,
+                          isPortrait: isPortrait,
+                        ),
                         SizedBox(width: 24),
                         Expanded(
                           child: Padding(
-                            padding: EdgeInsets.all(width* 0.02),
+                            padding: EdgeInsets.all(width * 0.02),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                joinNetworkButton(
+                                _joinNetworkButton(
                                   context,
                                   width,
                                   height,
                                   isPortrait,
                                 ),
                                 SizedBox(width: width * 0.01),
-                                createNetworkButton(
+                                _createNetworkButton(
                                   context,
                                   width,
                                   height,
@@ -93,7 +101,7 @@ class LandingScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                ),
+                  ),
           );
         },
       ),
@@ -102,7 +110,7 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
-  Widget joinNetworkButton(context, width, height, isPortrait) =>
+  Widget _joinNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
           Navigator.pushNamed(context, '/network');
@@ -116,7 +124,7 @@ class LandingScreen extends StatelessWidget {
         ),
       );
 
-  Widget createNetworkButton(context, width, height, isPortrait) =>
+  Widget _createNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
           Navigator.pushNamed(context, '/create_network');
