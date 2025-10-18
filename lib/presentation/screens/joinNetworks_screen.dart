@@ -43,21 +43,21 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
           id: "Emergency hub",
           status: "Connected",
           lastSean: "2 mins ago",
-       
+
           connectors: 1,
         ),
         Device(
           id: "wi-fi-5Ghz",
           status: "Disconnected",
           lastSean: "10 mins ago",
-         
+
           connectors: 2,
         ),
         Device(
           id: "house-wifi",
           status: "Connected",
           lastSean: "1 min ago",
-       
+
           connectors: 5,
         ),
       ];
@@ -98,13 +98,16 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
       body: Column(
         children: [
           Padding(padding: const EdgeInsets.all(16.0), child: _refreshButton()),
-          Expanded(child: _buildNetworkCard( Device(
-            id: "212",
-            status: " Connected",
-            lastSean: "2 mins ago",
-            connectors: 4,
-            
-          ))),
+          Expanded(
+            child: _buildNetworkCard(
+              Device(
+                id: "212",
+                status: " Connected",
+                lastSean: "2 mins ago",
+                connectors: 4,
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButton: const VoiceWidget(),
@@ -176,7 +179,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                       Text("Last Seen: ${device.lastSean}"),
                     ],
                   ),
-                  
+
                   Row(
                     children: [
                       Icon(Icons.person, size: 16),
