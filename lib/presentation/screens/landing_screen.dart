@@ -5,26 +5,28 @@ import '../widgets/footer_widget.dart';
 
 import '../widgets/homeCard_widget.dart';
 
-
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-       appBar: AppBar(
+      appBar: AppBar(
         title: const Text("Home "),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color.fromARGB(255, 235, 200, 200), Color.fromARGB(255, 164, 236, 246)],
+              colors: [
+                Color.fromARGB(255, 235, 200, 200),
+                Color.fromARGB(255, 164, 236, 246),
+              ],
             ),
           ),
         ),
       ),
-     
+
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -50,7 +52,7 @@ class LandingScreen extends StatelessWidget {
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
-                        // TODO: handle Create action
+                        Navigator.pushNamed(context, '/create_network');
                       },
                       child: LandingpagebuttonsWidget(
                         text: "Create\nNetwork",
@@ -58,9 +60,7 @@ class LandingScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-               
                 ],
-                
               ),
             ),
           ],
@@ -68,7 +68,6 @@ class LandingScreen extends StatelessWidget {
       ),
       floatingActionButton: const VoiceWidget(),
       bottomNavigationBar: const FooterWidget(currentPage: 0),
-      
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
+import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
@@ -17,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'BEACON Network',
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppColors.primaryBackground,
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
       routes: {
         landingScreen: (context) => LandingScreen(),
         networkScreen: (context) => Joinnetworkscreen(),
+        createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) => ProfileScreen(),
         // '/chat': (context) => ChatScreen(),
         resourceScreen: (context) => ResourceSharingScreen(),
