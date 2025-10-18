@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/footer_widget.dart';
@@ -11,7 +13,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -29,101 +30,195 @@ class _ProfileScreenState extends State<ProfileScreen> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color.fromARGB(255, 235, 200, 200), Color.fromARGB(255, 164, 236, 246)],
+              colors: [
+                Color.fromARGB(255, 235, 200, 200),
+                Color.fromARGB(255, 164, 236, 246),
+              ],
             ),
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Center(
-          child: Column(
-            children: [
-              _buildProfileImage(),
-              SizedBox(height: 16),
-              _buildUserInfoCard(), 
-              SizedBox(height: 16),
-              _buildSaveButton(),     
-              SizedBox(height: 24),
-            ],
-          ),
-        ),
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          final isPortrait = orientation == Orientation.portrait;
+          final size = MediaQuery.of(context).size;
+          final width = size.width;
+          final height = size.height;
+
+          return SingleChildScrollView(
+            child: isPortrait
+                ? Column(
+                    children: [
+                      SizedBox(height: height * 0.02),
+                      _buildProfileImage(width, height, isPortrait),
+                      SizedBox(height: height * 0.02),
+                      _buildUserInfoCard(width, height, isPortrait),
+                      SizedBox(height: height * 0.02),
+                      _buildSaveButton(width, height, isPortrait),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      SizedBox(width: width * 0.01),
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          children: [
+                            SizedBox(height: height * 0.04),
+                            _buildProfileImage(width, height, isPortrait),
+                            SizedBox(height: height * 0.02),
+                            _buildSaveButton(width, height, isPortrait),
+                            SizedBox(height: height * 0.04),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              _buildUserInfoCard(width, height, isPortrait),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          );
+        },
       ),
       floatingActionButton: const VoiceWidget(),
       bottomNavigationBar: const FooterWidget(currentPage: 2),
     );
   }
 
-
-  Widget _buildProfileImage() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.alertRed,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
+  Widget _buildProfileImage(width, height, isPortrait) {
+    return Card(
+      margin: EdgeInsets.symmetric(
+        horizontal: isPortrait ? width * 0.04 : 0,
+        vertical: isPortrait ? 0 : height * 0.02,
       ),
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: AppColors.primaryBackground,
-                child: Icon(Icons.person, size: 60, color: AppColors.alertRed),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primaryBackground,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.camera_alt,
-                      size: 18,
-                      color: AppColors.alertRed,
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: double.infinity,
+        height: isPortrait ? null : height * 0.4,
+        decoration: BoxDecoration(
+          color: AppColors.alertRed,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: EdgeInsets.symmetric(
+          vertical: isPortrait ? height * 0.03 : height * 0.02,
+          horizontal: isPortrait ? 0 : 0,
+        ),
+        child: isPortrait
+            ? Column(
+                children: [
+                  _profileIconWidget(width, height, isPortrait),
+                  SizedBox(height: min(width, height) * 0.02),
+                  Text(
+                    'Emergency Profile',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: min(width, height) * 0.06,
+                      fontWeight: FontWeight.bold,
                     ),
-                    padding: EdgeInsets.zero,
-                    onPressed: () {
-                      // TODO: Photo upload functionality
-                    },
                   ),
-                ),
+                  SizedBox(height: min(width, height) * 0.01),
+                  Text(
+                    'Keep your information updated',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: min(width, height) * 0.035,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  SizedBox(width: width * 0.04),
+                  Row(
+                    children: [
+                      SizedBox(width: width * 0.03),
+                      _profileIconWidget(width, height, isPortrait),
+                      SizedBox(width: width * 0.03),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Emergency\nProfile',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: min(width, height) * 0.06,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: min(width, height) * 0.01),
+                  Text(
+                    'Keep your information updated',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: min(width, height) * 0.035,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Emergency Profile',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Keep your information updated',
-            style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14),
-          ),
-        ],
       ),
     );
   }
 
+  Widget _profileIconWidget(width, height, isPortrait) {
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: isPortrait ? width * 0.15 : height * 0.12,
+          backgroundColor: AppColors.primaryBackground,
+          child: Icon(
+            Icons.person,
+            size: isPortrait ? width * 0.2 : height * 0.15,
+            color: AppColors.alertRed,
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: CircleAvatar(
+            radius: isPortrait ? width * 0.05 : height * 0.04,
+            backgroundColor: AppColors.primaryBackground,
+            child: IconButton(
+              icon: Icon(
+                Icons.camera_alt,
+                size: isPortrait ? width * 0.05 : height * 0.04,
+                color: AppColors.alertRed,
+              ),
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                // TODO: Photo upload functionality
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _buildUserInfoCard() {
+  Widget _buildUserInfoCard(width, height, isPortrait) {
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: EdgeInsets.symmetric(
+        horizontal: isPortrait ? width * 0.04 : 0,
+        vertical: isPortrait ? 0 : height * 0.02,
+      ),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isPortrait ? width * 0.02 : height * 0.01),
         child: Form(
-          key: _formKey,  
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -134,98 +229,126 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(
                     'User Information',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: min(width, height) * 0.05,
                       fontWeight: FontWeight.bold,
                       color: AppColors.alertRed,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,  
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  prefixIcon: const Icon(Icons.person),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,  
-                decoration: InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: const Icon(Icons.email),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),  
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your email';
-                  }
-                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  return null;
-                },
-
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _phoneController,  
-                decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  prefixIcon: const Icon(Icons.phone),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your phone number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _addressController, 
-                decoration: InputDecoration(
-                  labelText: 'Address',
-                  prefixIcon: const Icon(Icons.home),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your address';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _bloodTypeController,  
-                decoration: InputDecoration(
-                  labelText: 'Blood Type',
-                  hintText: 'e.g., O+, A-, B+',
-                  prefixIcon: const Icon(Icons.bloodtype),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+              SizedBox(height: min(height, width) * 0.02),
+              isPortrait
+                  ? Column(
+                      children: [
+                        _buildTextField(
+                          _nameController,
+                          'Name',
+                          Icons.person,
+                          isPortrait,
+                          height,
+                          width,
+                        ),
+                        SizedBox(height: 16),
+                        _buildTextField(
+                          _emailController,
+                          'Email',
+                          Icons.email,
+                          isPortrait,
+                          height,
+                          width,
+                        ),
+                        SizedBox(height: 16),
+                        _buildTextField(
+                          _phoneController,
+                          'Phone Number',
+                          Icons.phone,
+                          isPortrait,
+                          height,
+                          width,
+                        ),
+                        SizedBox(height: 16),
+                        _buildTextField(
+                          _addressController,
+                          'Address',
+                          Icons.home,
+                          isPortrait,
+                          height,
+                          width,
+                        ),
+                        SizedBox(height: 16),
+                        _buildTextField(
+                          _bloodTypeController,
+                          'Blood Type',
+                          Icons.bloodtype,
+                          isPortrait,
+                          height,
+                          width,
+                          hintText: 'e.g., O+, A-, B+',
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildTextField(
+                                _nameController,
+                                'Name',
+                                Icons.person,
+                                isPortrait,
+                                height,
+                                width,
+                              ),
+                              SizedBox(height: 12),
+                              _buildTextField(
+                                _emailController,
+                                'Email',
+                                Icons.email,
+                                isPortrait,
+                                height,
+                                width,
+                              ),
+                              SizedBox(height: 12),
+                              _buildTextField(
+                                _phoneController,
+                                'Phone Number',
+                                Icons.phone,
+                                isPortrait,
+                                height,
+                                width,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildTextField(
+                                _addressController,
+                                'Address',
+                                Icons.home,
+                                isPortrait,
+                                height,
+                                width,
+                              ),
+                              SizedBox(height: 12),
+                              _buildTextField(
+                                _bloodTypeController,
+                                'Blood Type',
+                                Icons.bloodtype,
+                                isPortrait,
+                                height,
+                                width,
+                                hintText: 'e.g., O+, A-, B+',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+              SizedBox(height: min(width, height) * 0.02),
             ],
           ),
         ),
@@ -233,29 +356,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon,
+    bool isPortrait,
+    height,
+    width, {
+    String? hintText,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: min(height, width) * 0.02,
+        ),
+      ),
+      validator: (value) {
+        if (controller == _nameController ||
+            controller == _emailController ||
+            controller == _phoneController ||
+            controller == _addressController) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter your ${label.toLowerCase()}';
+          }
+        }
+        if (controller == _emailController) {
+          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value!)) {
+            return 'Please enter a valid email address';
+          }
+        }
+        return null;
+      },
+    );
+  }
 
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(width, height, isPortrait) {
     return ElevatedButton(
       onPressed: () {
-        if (_formKey.currentState!.validate()) { 
+        if (_formKey.currentState!.validate()) {
           // TODO: Process data
-   
         }
       },
       style: ElevatedButton.styleFrom(
+        minimumSize: isPortrait
+            ? Size(width * (1 - 0.08), height * 0.06)
+            : Size(width, 50),
         backgroundColor: AppColors.alertRed,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        padding: EdgeInsets.symmetric(
+          vertical: min(height, width) * 0.02,
+          horizontal: min(height, width) * 0.1,
         ),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        minimumSize: const Size.fromHeight(50),
       ),
       child: const Text(
         'Save Changes',
-        style: TextStyle(
-          fontSize: 16,
-          color: AppColors.primaryBackground,
-        ),
+        style: TextStyle(fontSize: 16, color: AppColors.primaryBackground),
       ),
     );
   }
