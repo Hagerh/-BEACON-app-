@@ -45,14 +45,14 @@ class LandingScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            joinNetworkButton(
+                            _joinNetworkButton(
                               context,
                               width,
                               height,
                               isPortrait,
                             ),
                             SizedBox(width: width * 0.05),
-                            createNetworkButton(
+                            _createNetworkButton(
                               context,
                               width,
                               height,
@@ -74,14 +74,14 @@ class LandingScreen extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                joinNetworkButton(
+                                _joinNetworkButton(
                                   context,
                                   width,
                                   height,
                                   isPortrait,
                                 ),
                                 SizedBox(width: width * 0.01),
-                                createNetworkButton(
+                                _createNetworkButton(
                                   context,
                                   width,
                                   height,
@@ -102,7 +102,7 @@ class LandingScreen extends StatelessWidget {
     );
   }
 
-  Widget joinNetworkButton(context, width, height, isPortrait) =>
+  Widget _joinNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
           Navigator.pushNamed(context, '/network');
@@ -116,7 +116,7 @@ class LandingScreen extends StatelessWidget {
         ),
       );
 
-  Widget createNetworkButton(context, width, height, isPortrait) =>
+  Widget _createNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
           // TODO: handle Create action
