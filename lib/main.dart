@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/presentation/screens/privateChat_screen.dart';
+import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
-import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
+import 'package:projectdemo/presentation/screens/publicChat_screen.dart';
+
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
@@ -38,8 +41,9 @@ class MyApp extends StatelessWidget {
         networkScreen: (context) => Joinnetworkscreen(),
         createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) => ProfileScreen(),
-        // networkDashboardScreen: (context) => NetworkDashboardScreen(),
-        // chatScreen: (context) => ChatScreen(),
+        publicChatScreen: (context) => PublicChatScreen(),
+        chatScreen: (context) => PrivatechatScreen(),
+
         resourceScreen: (context) => ResourceSharingScreen(),
       },
     );

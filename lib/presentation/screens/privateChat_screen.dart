@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+class PrivatechatScreen extends StatefulWidget {
+  const PrivatechatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<PrivatechatScreen> createState() => _PrivateChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _PrivateChatScreenState extends State< PrivatechatScreen > {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   

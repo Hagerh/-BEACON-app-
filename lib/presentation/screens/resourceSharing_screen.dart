@@ -49,7 +49,7 @@ class ResourceSharingScreen extends StatelessWidget {
           child: Column(
             children: [
               const Text(
-                "Request or Offer Essential Resources",
+                "Request Essential Resources",
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -58,6 +58,19 @@ class ResourceSharingScreen extends StatelessWidget {
               ...resourceCategories.entries.map((entry) {
                 return _buildResourceSection(context, entry.key, entry.value);
               }),
+
+              const SizedBox(height: 30),
+              const Divider(thickness: 1, color: Colors.grey),
+
+              // --- Custom Resource Request Field ---
+              const SizedBox(height: 20),
+              const Text(
+                "Didn’t find what you need?",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+
+              _buildCustomRequestField(context),
             ],
           ),
         ),
@@ -111,12 +124,72 @@ class ResourceSharingScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text("Request", style: TextStyle(color:AppColors.primaryBackground) ),
+                  child: const Text(
+                    "Request",
+                    style: TextStyle(color: AppColors.primaryBackground),
+                  ),
                 ),
               ),
             )
             .toList(),
       ),
+    );
+  }
+
+  Widget _buildCustomRequestField(BuildContext context) {
+    final TextEditingController _controller = TextEditingController();
+
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            decoration: InputDecoration(
+              hintText: "Enter resource name",
+              filled: true,
+              fillColor: Colors.grey.shade200,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        ElevatedButton(
+          onPressed: () {
+            final itemName = _controller.text.trim();
+            if (itemName.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Please enter a resource name."),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              return;
+            }
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Request sent for $itemName"),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+
+            _controller.clear();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange.shade400,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            "Request",
+            style: TextStyle(color: AppColors.primaryBackground),
+          ),
+        ),
+      ],
     );
   }
 }

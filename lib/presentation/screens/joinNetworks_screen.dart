@@ -7,12 +7,10 @@ class Device {
   final String id;
   final String status;
   final String lastSean;
- 
   final int connectors;
 
   Device({
     required this.lastSean,
-
     required this.id,
     required this.status,
     required this.connectors,
@@ -45,21 +43,21 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
           id: "Emergency hub",
           status: "Connected",
           lastSean: "2 mins ago",
-       
-          connectors: 3,
+
+          connectors: 1,
         ),
         Device(
           id: "wi-fi-5Ghz",
           status: "Disconnected",
           lastSean: "10 mins ago",
-         
+
           connectors: 2,
         ),
         Device(
           id: "house-wifi",
           status: "Connected",
           lastSean: "1 min ago",
-       
+
           connectors: 5,
         ),
       ];
@@ -100,7 +98,16 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
       body: Column(
         children: [
           Padding(padding: const EdgeInsets.all(16.0), child: _refreshButton()),
-          Expanded(child: _buildNetworkCard()),
+          Expanded(
+            child: _buildNetworkCard(
+              Device(
+                id: "212",
+                status: " Connected",
+                lastSean: "2 mins ago",
+                connectors: 4,
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButton: const VoiceWidget(),
@@ -129,10 +136,19 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
     );
   }
 
-  Widget _buildNetworkCard() {
+  Widget _buildNetworkCard(Device device) {
     return GestureDetector(
       onTap: () {
-        Navigator.pushNamed(context, '/chat_screen');
+        Navigator.pushNamed(
+          context,
+          '/public_chat',
+          arguments: {
+            'networkId': device.id,
+            'networkStatus': device.status,
+            'lastSeen': device.lastSean,
+            'connectors': device.connectors,
+          },
+        );
       },
       child: ListView.builder(
         itemCount: _networks.length,
@@ -163,7 +179,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                       Text("Last Seen: ${device.lastSean}"),
                     ],
                   ),
-                  
+
                   Row(
                     children: [
                       Icon(Icons.person, size: 16),
