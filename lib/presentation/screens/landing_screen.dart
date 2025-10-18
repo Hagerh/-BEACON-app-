@@ -27,47 +27,106 @@ class LandingScreen extends StatelessWidget {
         ),
       ),
 
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            HomecardWidget(),
-            SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/network');
-                      },
-                      child: LandingpagebuttonsWidget(
-                        text: "join\nNetwork",
-                        icon: Icons.wifi,
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          final isPortrait = orientation == Orientation.portrait;
+          final size = MediaQuery.of(context).size;
+          final width = size.width;
+          final height = size.height;
+
+          return SingleChildScrollView(
+            child: isPortrait
+                ? Column(
+                    children: [
+                      HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                      SizedBox(height: height * 0.03),
+                      Padding(
+                        padding: EdgeInsets.all(height * 0.02),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            joinNetworkButton(
+                              context,
+                              width,
+                              height,
+                              isPortrait,
+                            ),
+                            SizedBox(width: width * 0.05),
+                            createNetworkButton(
+                              context,
+                              width,
+                              height,
+                              isPortrait,
+                            ),
+                          ],
+                        ),
                       ),
+                    ],
+                  )
+                : IntrinsicHeight(
+                  child: Column(
+                      children: [
+                        HomecardWidget(width: width, height: height, isPortrait: isPortrait),
+                        SizedBox(width: 24),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.all(width* 0.02),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                joinNetworkButton(
+                                  context,
+                                  width,
+                                  height,
+                                  isPortrait,
+                                ),
+                                SizedBox(width: width * 0.01),
+                                createNetworkButton(
+                                  context,
+                                  width,
+                                  height,
+                                  isPortrait,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(width: 20),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/create_network');
-                      },
-                      child: LandingpagebuttonsWidget(
-                        text: "Create\nNetwork",
-                        icon: Icons.add_circle_outline,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                ),
+          );
+        },
       ),
       floatingActionButton: const VoiceWidget(),
       bottomNavigationBar: const FooterWidget(currentPage: 0),
     );
   }
+
+  Widget joinNetworkButton(context, width, height, isPortrait) =>
+      GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(context, '/network');
+        },
+        child: LandingpagebuttonsWidget(
+          text: "join\nNetwork",
+          icon: Icons.wifi,
+          width: width,
+          height: height,
+          isPortrait: isPortrait,
+        ),
+      );
+
+  Widget createNetworkButton(context, width, height, isPortrait) =>
+      GestureDetector(
+        onTap: () {
+          // TODO: handle Create action
+        },
+        child: LandingpagebuttonsWidget(
+          text: "Create\nNetwork",
+          icon: Icons.add_circle_outline,
+          width: width,
+          height: height,
+          isPortrait: isPortrait,
+        ),
+      );
 }

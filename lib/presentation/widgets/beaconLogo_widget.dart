@@ -4,7 +4,11 @@ import '../../constants/colors.dart';
 
 
 class BeaconLogo extends StatelessWidget {
-  const BeaconLogo({super.key});
+  final double width;
+  final double height;
+  final bool isPortrait;
+
+  const BeaconLogo({super.key, required this.width, required this.height, required this.isPortrait});
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +16,7 @@ class BeaconLogo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.start,
 
       children: [
-        const SizedBox(height:20),
+        //const SizedBox(height:20),
         Stack(
           alignment: Alignment.center,
           children: [
