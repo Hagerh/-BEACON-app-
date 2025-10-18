@@ -36,7 +36,8 @@ class MyApp extends StatelessWidget {
         landingScreen: (context) => LandingScreen(),
         networkScreen: (context) => Joinnetworkscreen(),
         profileScreen: (context) => ProfileScreen(),
-        // '/chat': (context) => ChatScreen(),
+        networkDashboardScreen: (context) => NetworkDashboardScreen(),
+        chatScreen: (context) => ChatScreen(),
         resourceScreen: (context) => ResourceSharingScreen(),
       },
     );
