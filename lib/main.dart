@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/presentation/screens/chat.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
+import 'package:projectdemo/presentation/screens/network_dashboard.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
