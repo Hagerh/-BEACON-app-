@@ -119,7 +119,7 @@ class LandingScreen extends StatelessWidget {
   Widget createNetworkButton(context, width, height, isPortrait) =>
       GestureDetector(
         onTap: () {
-          // TODO: handle Create action
+          Navigator.pushNamed(context, '/create_network');
         },
         child: LandingpagebuttonsWidget(
           text: "Create\nNetwork",

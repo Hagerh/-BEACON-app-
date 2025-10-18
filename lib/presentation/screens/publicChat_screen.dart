@@ -2,61 +2,104 @@ import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
-class NetworkDashboardScreen extends StatefulWidget {
-  const NetworkDashboardScreen({super.key});
+class PublicChatScreen extends StatefulWidget {
+  const PublicChatScreen({super.key});
 
   @override
-  State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();
+  State<PublicChatScreen> createState() => _PublicChatScreenState();
+
 }
 
-class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
-  final List<Map<String, dynamic>> _connectedDevices = [
-    {
-      'name': 'Sarah Mitchell',
-      'deviceId': 'Device #A123',
-      'status': 'Online',
-      'signalStrength': 85,
-      'distance': '50m',
-      'avatar': 'S',
-      'color': AppColors.beaconOrange,
-    },
-    {
-      'name': 'John Parker',
-      'deviceId': 'Device #B456',
-      'status': 'Online',
-      'signalStrength': 92,
-      'distance': '30m',
-      'avatar': 'J',
-      'color': AppColors.connectionTeal,
-    },
-    {
-      'name': 'Emily Chen',
-      'deviceId': 'Device #C789',
-      'status': 'Idle',
-      'signalStrength': 68,
-      'distance': '120m',
-      'avatar': 'E',
-      'color': AppColors.infoBlue,
-    },
-    {
-      'name': 'Michael Brown',
-      'deviceId': 'Device #D012',
-      'status': 'Online',
-      'signalStrength': 78,
-      'distance': '80m',
-      'avatar': 'M',
-      'color': AppColors.safeGreen,
-    },
-    {
-      'name': 'Lisa Anderson',
-      'deviceId': 'Device #E345',
-      'status': 'Away',
-      'signalStrength': 55,
-      'distance': '200m',
-      'avatar': 'L',
-      'color': AppColors.alertRed,
-    },
-  ];
+class _PublicChatScreenState extends State<PublicChatScreen> {
+  List<Map<String, dynamic>> _connectedDevices = [];
+  String _networkName = '';
+  String _networkStatus = '';
+  int _totalConnectors = 0;
+
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Get the network data  from joinNetwork screen
+    final Map<String, dynamic>? networkData = 
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    
+    if (networkData != null) {
+      _networkName = networkData['networkId'] ?? 'Unknown Network';
+      _networkStatus = networkData['networkStatus'] ?? 'Unknown';
+      _totalConnectors = networkData['connectors'] ?? 0;
+      
+      // Load devices based on the network
+      _loadDevicesForNetwork(_networkName, _totalConnectors);
+    }
+  }
+
+void _loadDevicesForNetwork(String networkName, int connectorCount) {
+    // TODO: Replace with real data 
+    
+    final allDevices = [
+      {
+        'name': 'Sarah Mitchell',
+        'deviceId': 'Device #A123',
+        'status': 'Online',
+        'signalStrength': 85,
+        'distance': '50m',
+        'avatar': 'S',
+        'color': AppColors.beaconOrange,
+      },
+      {
+        'name': 'John Parker',
+        'deviceId': 'Device #B456',
+        'status': 'Online',
+        'signalStrength': 92,
+        'distance': '30m',
+        'avatar': 'J',
+        'color': AppColors.connectionTeal,
+      },
+      {
+        'name': 'Emily Chen',
+        'deviceId': 'Device #C789',
+        'status': 'Idle',
+        'signalStrength': 68,
+        'distance': '120m',
+        'avatar': 'E',
+        'color': AppColors.infoBlue,
+      },
+      {
+        'name': 'Michael Brown',
+        'deviceId': 'Device #D012',
+        'status': 'Online',
+        'signalStrength': 78,
+        'distance': '80m',
+        'avatar': 'M',
+        'color': AppColors.beaconOrange,
+      },
+      {
+        'name': 'Lisa Anderson',
+        'deviceId': 'Device #E345',
+        'status': 'Away',
+        'signalStrength': 55,
+        'distance': '150m',
+        'avatar': 'L',
+        'color': AppColors.infoBlue,
+      },
+    ];
+
+    setState(() {
+      
+      _connectedDevices = allDevices.take(connectorCount).toList();
+    });
+  }
+
+
+
+
+
+
+
+
+
 
   final List<String> _predefinedMessages = [
     '🆘 Need immediate help!',
@@ -172,7 +215,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   void _openPrivateChat(BuildContext context, Map<String, dynamic> device) {
     Navigator.pushNamed(
       context,
-      '/chat',
+      '/private_chat',
       arguments: device,
     );
   }
@@ -187,7 +230,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Network Dashboard'),
+        title: const Text('Podcast '),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
