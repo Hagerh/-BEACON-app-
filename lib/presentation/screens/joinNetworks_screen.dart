@@ -7,12 +7,12 @@ class Device {
   final String id;
   final String status;
   final String lastSean;
-  final int signalstrenth;
+ 
   final int connectors;
 
   Device({
     required this.lastSean,
-    required this.signalstrenth,
+
     required this.id,
     required this.status,
     required this.connectors,
@@ -45,21 +45,21 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
           id: "Emergency hub",
           status: "Connected",
           lastSean: "2 mins ago",
-          signalstrenth: 60,
+       
           connectors: 3,
         ),
         Device(
           id: "wi-fi-5Ghz",
           status: "Disconnected",
           lastSean: "10 mins ago",
-          signalstrenth: 55,
+         
           connectors: 2,
         ),
         Device(
           id: "house-wifi",
           status: "Connected",
           lastSean: "1 min ago",
-          signalstrenth: 40,
+       
           connectors: 5,
         ),
       ];
@@ -163,13 +163,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                       Text("Last Seen: ${device.lastSean}"),
                     ],
                   ),
-                  Row(
-                    children: [
-                      Icon(Icons.signal_wifi_4_bar, size: 16),
-                      SizedBox(width: 4),
-                      Text("Signal Strength: ${device.signalstrenth}%"),
-                    ],
-                  ),
+                  
                   Row(
                     children: [
                       Icon(Icons.person, size: 16),
