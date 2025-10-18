@@ -4,13 +4,13 @@ import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
+import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
 
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  
   const MyApp({super.key});
 
   @override
@@ -29,18 +29,16 @@ class MyApp extends StatelessWidget {
           onPrimary: AppColors.textPrimary,
           onSecondary: AppColors.textPrimary,
           onSurface: AppColors.textSecondary,
-      ),
+        ),
       ),
       initialRoute: '/',
-      routes:{
+      routes: {
         landingScreen: (context) => LandingScreen(),
         networkScreen: (context) => Joinnetworkscreen(),
         profileScreen: (context) => ProfileScreen(),
-       // '/chat': (context) => ChatScreen(),
-        //'/resources': (context) => ResourceScreen(),
+        // '/chat': (context) => ChatScreen(),
+        resourceScreen: (context) => ResourceSharingScreen(),
       },
-      
     );
   }
 }
-
