@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import '../widgets/footer_widget.dart';
 
@@ -105,12 +106,12 @@ class ResourceSharingScreen extends StatelessWidget {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade400,
+                    backgroundColor: AppColors.buttonPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text("Request"),
+                  child: const Text("Request", style: TextStyle(color:AppColors.primaryBackground) ),
                 ),
               ),
             )
