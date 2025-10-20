@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
-import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/view/widgets/landingPageButtons_widget.dart';
+import 'package:projectdemo/view/widgets/voice_widget.dart';
 import '../widgets/footer_widget.dart';
 
 import '../widgets/homeCard_widget.dart';

@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/presentation/widgets/footer_widget.dart';
-import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/view/widgets/footer_widget.dart';
+import 'package:projectdemo/view/widgets/voice_widget.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

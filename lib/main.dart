@@ -1,17 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/presentation/screens/privateChat_screen.dart';
-import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
-import 'package:projectdemo/presentation/screens/landing_screen.dart';
-import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
-import 'package:projectdemo/presentation/screens/publicChat_screen.dart';
+import 'package:projectdemo/view/screens/privateChat_screen.dart';
+import 'package:projectdemo/view/screens/createNetwork_screen.dart';
+import 'package:projectdemo/view/screens/landing_screen.dart';
+import 'package:projectdemo/view/screens/joinNetworks_screen.dart';
+import 'package:projectdemo/view/screens/publicChat_screen.dart';
 
-import 'package:projectdemo/presentation/screens/profile_screen.dart';
+import 'package:projectdemo/view/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
-import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
+import 'package:projectdemo/view/screens/resourceSharing_screen.dart';
+
+// Import ViewModels
+import 'package:projectdemo/viewmodel/profile_viewmodel.dart';
+import 'package:projectdemo/viewmodel/network_viewmodel.dart';
+import 'package:projectdemo/viewmodel/chat_viewmodel.dart';
+import 'package:projectdemo/viewmodel/resource_viewmodel.dart';
 
 void main() {
   runApp(MyApp());
+  // runApp(
+  //   // Setup MultiProvider for MVVM architecture
+  //   MultiProvider(
+  //     providers: [
+  //       ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+  //       ChangeNotifierProvider(create: (_) => NetworkViewModel()),
+  //       ChangeNotifierProvider(create: (_) => ChatViewModel()),
+  //       ChangeNotifierProvider(create: (_) => ResourceViewModel()),
+  //     ],
+  //     child: const MyApp(),
+  //   ),
+  // );
 }
 
 class MyApp extends StatelessWidget {

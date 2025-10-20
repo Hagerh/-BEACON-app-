@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/view/widgets/voice_widget.dart';
 
 class Device {
   final String id;

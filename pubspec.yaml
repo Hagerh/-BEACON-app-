@@ -31,8 +31,14 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.3.2
- 
   cupertino_icons: ^1.0.8
+  
+  # State Management for MVVM
+  provider: ^6.1.2
+  
+  # Optional: For better state management
+  # flutter_riverpod: ^2.6.1
+  # get: ^4.6.6
 
 dev_dependencies:
   flutter_test:
