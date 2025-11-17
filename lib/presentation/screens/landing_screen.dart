@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
-// Note: Assuming BeaconLogo is located in the widgets folder relative to this file
 import '../widgets/beaconLogo_widget.dart';
 import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
-import '../widgets/footer_widget.dart';
 import '../widgets/homeCard_widget.dart';
 
 class LandingScreen extends StatefulWidget {
@@ -16,12 +14,10 @@ class LandingScreen extends StatefulWidget {
 
 class _LandingScreenState extends State<LandingScreen> {
   Widget _buildMainContent(BuildContext context, bool isLandscape) {
-    // Content layout: only show HomeCard in portrait, center buttons in landscape.
     final content = Column(
-      mainAxisSize: MainAxisSize.min, // Shrink to fit content
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // HomeCard is only displayed in Portrait mode
         if (!isLandscape) ...[
           const HomecardWidget(),
           const SizedBox(height: 24),
@@ -30,9 +26,9 @@ class _LandingScreenState extends State<LandingScreen> {
           padding: EdgeInsets.symmetric(
             horizontal: isLandscape ? 32.0 : 16.0,
             vertical: isLandscape ? 0 : 16.0,
-          ), // Adjust vertical padding
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center, // Center buttons
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
                 child: GestureDetector(
@@ -43,9 +39,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   ),
                 ),
               ),
-              SizedBox(
-                width: isLandscape ? 32 : 16,
-              ), // Increased spacing in landscape
+              SizedBox(width: isLandscape ? 32 : 16),
               Expanded(
                 child: GestureDetector(
                   onTap: () => Navigator.pushNamed(context, '/create_network'),
@@ -61,7 +55,6 @@ class _LandingScreenState extends State<LandingScreen> {
       ],
     );
 
-    // In landscape, we center the content vertically and horizontally within the Expanded area.
     if (isLandscape) {
       return Center(child: content);
     } else {
@@ -78,6 +71,16 @@ class _LandingScreenState extends State<LandingScreen> {
 
         return Scaffold(
           appBar: AppBar(
+            actions:isLandscape ? [] : [
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                tooltip: 'Profile',
+
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, "/profile");
+                },
+              ),
+            ],
             title: const Text("Home "),
             flexibleSpace: Container(
               decoration: const BoxDecoration(
@@ -112,10 +115,12 @@ class _LandingScreenState extends State<LandingScreen> {
                             child: BeaconLogo(),
                           ),
 
-                          const Divider(color: Color.fromARGB(255, 229, 228, 228)),
+                          const Divider(
+                            color: Color.fromARGB(255, 229, 228, 228),
+                          ),
 
                           ListTile(
-                            leading:  const Icon(Icons.person_outline),
+                            leading: const Icon(Icons.person_outline),
                             title: const Text("Profile"),
                             onTap: () {
                               Navigator.pushReplacementNamed(
@@ -128,7 +133,7 @@ class _LandingScreenState extends State<LandingScreen> {
                             ).primaryColor.withOpacity(0.1),
                           ),
 
-                          // Spacer to push the Exit/Leave button to the bottom
+                          // Spacer to push the Exit button to the bottom
                           const Spacer(),
 
                           Padding(
@@ -143,7 +148,7 @@ class _LandingScreenState extends State<LandingScreen> {
                                 style: TextStyle(color: AppColors.alertRed),
                               ),
                               onTap: () {
-                                // Placeholder for actual exit/logout/network leave logic
+                                // Placeholder for actual logout leave logic
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
@@ -160,14 +165,10 @@ class _LandingScreenState extends State<LandingScreen> {
 
                     const VerticalDivider(width: 1),
 
-                    
                     Expanded(child: _buildMainContent(context, true)),
                   ],
                 )
-              : _buildMainContent(
-                  context,
-                  false,
-                ),
+              : _buildMainContent(context, false),
 
           floatingActionButton: const VoiceWidget(),
         );
