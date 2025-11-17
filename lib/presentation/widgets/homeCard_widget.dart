@@ -4,22 +4,13 @@ import '../../constants/colors.dart';
 import 'beaconLogo_widget.dart';
 
 class HomecardWidget extends StatelessWidget {
-  final double width;
-  final double height;
-  final bool isPortrait;
-
-  const HomecardWidget({
-    super.key,
-    required this.width,
-    required this.height,
-    required this.isPortrait,
-  });
+  const HomecardWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
-      height: isPortrait? height * 0.35 : height * 0.3,
+      width: double.infinity,
+      height: 290,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -29,57 +20,33 @@ class HomecardWidget extends StatelessWidget {
 
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: Colors.grey.withOpacity(0.2),
             spreadRadius: 2,
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 4), // subtle drop shadow
           ),
         ],
       ),
-      child: isPortrait
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                BeaconLogo(width: width, height: height, isPortrait: isPortrait),
-                SizedBox(height: height * 0.01),
-                Flexible(
-                  child: Text(
-                    "Offline Emergency Communication Network",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: width * 0.04,
-                      fontWeight: FontWeight.bold,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Padding(
-              padding: EdgeInsets.only(left: width * 0.01),
-              child: Row(
-                children: [
-                  Expanded(flex: 1, child: BeaconLogo(width: width, height: height, isPortrait: isPortrait)),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "Offline Emergency Communication Network",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: width * 0.03,
-                          fontWeight: FontWeight.bold,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          BeaconLogo(),
+          SizedBox(height: 10,),
+          Flexible(
+            child: Text(
+              "Offline Emergency Communication Network",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                overflow: TextOverflow.ellipsis,
               ),
+
             ),
+          ),
+        ],
+      ),
     );
   }
 }

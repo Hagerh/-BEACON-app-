@@ -1,140 +1,177 @@
 import 'package:flutter/material.dart';
+import 'package:projectdemo/constants/colors.dart';
+// Note: Assuming BeaconLogo is located in the widgets folder relative to this file
+import '../widgets/beaconLogo_widget.dart';
 import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import '../widgets/footer_widget.dart';
-
 import '../widgets/homeCard_widget.dart';
 
-class LandingScreen extends StatelessWidget {
+class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Home "),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(255, 235, 200, 200),
-                Color.fromARGB(255, 164, 236, 246),
-              ],
-            ),
+  State<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends State<LandingScreen> {
+  Widget _buildMainContent(BuildContext context, bool isLandscape) {
+    // Content layout: only show HomeCard in portrait, center buttons in landscape.
+    final content = Column(
+      mainAxisSize: MainAxisSize.min, // Shrink to fit content
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // HomeCard is only displayed in Portrait mode
+        if (!isLandscape) ...[
+          const HomecardWidget(),
+          const SizedBox(height: 24),
+        ],
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isLandscape ? 32.0 : 16.0,
+            vertical: isLandscape ? 0 : 16.0,
+          ), // Adjust vertical padding
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center buttons
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/network'),
+                  child: const LandingpagebuttonsWidget(
+                    text: "join\nNetwork",
+                    icon: Icons.wifi,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: isLandscape ? 32 : 16,
+              ), // Increased spacing in landscape
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/create_network'),
+                  child: const LandingpagebuttonsWidget(
+                    text: "Create\nNetwork",
+                    icon: Icons.add_circle_outline,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          final isPortrait = orientation == Orientation.portrait;
-          final size = MediaQuery.of(context).size;
-          final width = size.width;
-          final height = size.height;
-
-          return SingleChildScrollView(
-            child: isPortrait
-                ? Column(
-                    children: [
-                      HomecardWidget(
-                        width: width,
-                        height: height,
-                        isPortrait: isPortrait,
-                      ),
-                      SizedBox(height: height * 0.03),
-                      Padding(
-                        padding: EdgeInsets.all(height * 0.02),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _joinNetworkButton(
-                              context,
-                              width,
-                              height,
-                              isPortrait,
-                            ),
-                            SizedBox(width: width * 0.05),
-                            _createNetworkButton(
-                              context,
-                              width,
-                              height,
-                              isPortrait,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  )
-                : IntrinsicHeight(
-                    child: Column(
-                      children: [
-                        HomecardWidget(
-                          width: width,
-                          height: height,
-                          isPortrait: isPortrait,
-                        ),
-                        SizedBox(width: 24),
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.all(width * 0.02),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _joinNetworkButton(
-                                  context,
-                                  width,
-                                  height,
-                                  isPortrait,
-                                ),
-                                SizedBox(width: width * 0.01),
-                                _createNetworkButton(
-                                  context,
-                                  width,
-                                  height,
-                                  isPortrait,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-          );
-        },
-      ),
-      floatingActionButton: const VoiceWidget(),
-      bottomNavigationBar: const FooterWidget(currentPage: 0),
+      ],
     );
+
+    // In landscape, we center the content vertically and horizontally within the Expanded area.
+    if (isLandscape) {
+      return Center(child: content);
+    } else {
+      // In portrait, we use SingleChildScrollView to ensure scrollability.
+      return SingleChildScrollView(child: content);
+    }
   }
 
-  Widget _joinNetworkButton(context, width, height, isPortrait) =>
-      GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, '/network');
-        },
-        child: LandingpagebuttonsWidget(
-          text: "join\nNetwork",
-          icon: Icons.wifi,
-          width: width,
-          height: height,
-          isPortrait: isPortrait,
-        ),
-      );
+  @override
+  Widget build(BuildContext context) {
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        final isLandscape = orientation == Orientation.landscape;
 
-  Widget _createNetworkButton(context, width, height, isPortrait) =>
-      GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, '/create_network');
-        },
-        child: LandingpagebuttonsWidget(
-          text: "Create\nNetwork",
-          icon: Icons.add_circle_outline,
-          width: width,
-          height: height,
-          isPortrait: isPortrait,
-        ),
-      );
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text("Home "),
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.fromARGB(255, 235, 200, 200),
+                    Color.fromARGB(255, 164, 236, 246),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          body: isLandscape
+              ? Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFFFFE6E6), Color(0xFFE0F7FA)],
+                        ),
+                      ),
+                      width: 300,
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20.0),
+                            child: BeaconLogo(),
+                          ),
+
+                          const Divider(color: Color.fromARGB(255, 229, 228, 228)),
+
+                          ListTile(
+                            leading:  const Icon(Icons.person_outline),
+                            title: const Text("Profile"),
+                            onTap: () {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                "/profile",
+                              );
+                            },
+                            selectedTileColor: Theme.of(
+                              context,
+                            ).primaryColor.withOpacity(0.1),
+                          ),
+
+                          // Spacer to push the Exit/Leave button to the bottom
+                          const Spacer(),
+
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: ListTile(
+                              leading: const Icon(
+                                Icons.logout,
+                                color: AppColors.alertRed,
+                              ),
+                              title: const Text(
+                                "Leave",
+                                style: TextStyle(color: AppColors.alertRed),
+                              ),
+                              onTap: () {
+                                // Placeholder for actual exit/logout/network leave logic
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Leave functionality Tapped!',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const VerticalDivider(width: 1),
+
+                    
+                    Expanded(child: _buildMainContent(context, true)),
+                  ],
+                )
+              : _buildMainContent(
+                  context,
+                  false,
+                ),
+
+          floatingActionButton: const VoiceWidget(),
+        );
+      },
+    );
+  }
 }
