@@ -15,6 +15,15 @@ class ProfileScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.home_outlined),
+                tooltip: 'Home',
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, "/");
+                },
+              ),
+            ],
             title: const Text("Profile"),
             flexibleSpace: Container(
               decoration: const BoxDecoration(
@@ -61,11 +70,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
 
           floatingActionButton: const VoiceWidget(),
-
-          //Todo will be removed
-          bottomNavigationBar: isLandscape
-              ? null
-              : const FooterWidget(currentPage: 2),
         );
       },
     );
