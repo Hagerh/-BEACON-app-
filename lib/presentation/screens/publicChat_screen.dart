@@ -3,7 +3,7 @@ import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import 'package:projectdemo/presentation/widgets/device_card.dart';
 import 'package:projectdemo/presentation/widgets/info_summary.dart';
-import 'package:projectdemo/presentation/widgets/quick_message_sheet.dart';
+import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 
 
