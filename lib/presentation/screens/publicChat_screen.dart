@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
+
 class PublicChatScreen extends StatefulWidget {
   const PublicChatScreen({super.key});
 
@@ -13,7 +14,6 @@ class PublicChatScreen extends StatefulWidget {
 class _PublicChatScreenState extends State<PublicChatScreen> {
   List<Map<String, dynamic>> _connectedDevices = [];
   String _networkName = '';
-  String _networkStatus = '';
   int _totalConnectors = 0;
 
 
@@ -27,7 +27,6 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
     
     if (networkData != null) {
       _networkName = networkData['networkId'] ?? 'Unknown Network';
-      _networkStatus = networkData['networkStatus'] ?? 'Unknown';
       _totalConnectors = networkData['connectors'] ?? 0;
       
       // Load devices based on the network
@@ -42,7 +41,8 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       {
         'name': 'Sarah Mitchell',
         'deviceId': 'Device #A123',
-        'status': 'Online',
+        'status': 'Active',
+        'unread': 2,
         'signalStrength': 85,
         'distance': '50m',
         'avatar': 'S',
@@ -51,7 +51,8 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       {
         'name': 'John Parker',
         'deviceId': 'Device #B456',
-        'status': 'Online',
+        'status': 'Active',
+        'unread': 0,
         'signalStrength': 92,
         'distance': '30m',
         'avatar': 'J',
@@ -61,6 +62,7 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
         'name': 'Emily Chen',
         'deviceId': 'Device #C789',
         'status': 'Idle',
+        'unread': 1,
         'signalStrength': 68,
         'distance': '120m',
         'avatar': 'E',
@@ -69,7 +71,8 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       {
         'name': 'Michael Brown',
         'deviceId': 'Device #D012',
-        'status': 'Online',
+        'status': 'Active',
+        'unread': 0,
         'signalStrength': 78,
         'distance': '80m',
         'avatar': 'M',
@@ -79,6 +82,7 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
         'name': 'Lisa Anderson',
         'deviceId': 'Device #E345',
         'status': 'Away',
+        'unread': 4,
         'signalStrength': 55,
         'distance': '150m',
         'avatar': 'L',
@@ -193,7 +197,7 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
                   color: AppColors.alertRed,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.send, color: Colors.white), 
+                child: const Icon(Icons.send, color: Colors.white),
               ),
               title: Text(msg, style: const TextStyle(color: AppColors.textPrimary)),
               onTap: () {
@@ -213,6 +217,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
   }
 
   void _openPrivateChat(BuildContext context, Map<String, dynamic> device) {
+    setState(() {
+      device['unread'] = 0;
+    });
+
     Navigator.pushNamed(
       context,
       '/private_chat',
@@ -249,17 +257,7 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
             tooltip: 'Broadcast',
             onPressed: _showBroadcastDialog,
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Refreshing network...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
+          
         ],
       ),
       body: Column(
@@ -278,9 +276,22 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildInfoItem(Icons.devices, '${_connectedDevices.length}', 'Connected'),
-                    _buildInfoItem(Icons.signal_cellular_alt, '85%', 'Signal'),
-                    _buildInfoItem(Icons.circle, 'Active', 'Status', AppColors.connectionTeal),
+                    Builder(builder: (context) {
+                      final total = _connectedDevices.length;
+                      final connected = _connectedDevices.where((d) => (d['status'] ?? '').toString() == 'Active').length;
+                      final nonConnected = total - connected;
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildInfoItem(Icons.devices, '$connected', 'Connected'),
+                          const SizedBox(width: 40),
+                          _buildInfoItem(Icons.group_off, '$nonConnected', 'Not connected'),
+                          const SizedBox(width: 40),
+                          _buildInfoItem(Icons.devices_other, '$total', 'Total'),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ],
@@ -331,7 +342,22 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
           ),
         ],
       ),
-      floatingActionButton: const VoiceWidget(),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+
+            onPressed: () {
+              Navigator.pushNamed(context, "/resources");
+            },
+            backgroundColor: AppColors.buttonPrimary,
+            heroTag: 'resourcesBtn',
+            child: const Icon(Icons.folder_shared, color: AppColors.primaryBackground),
+          ),
+          const SizedBox(height: 12),
+          const VoiceWidget(),
+        ],
+      ),
     );
   }
 
@@ -374,17 +400,46 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
             Row(
               children: [
                 
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: device['color'],
-                  child: Text(
-                    device['avatar'],
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: device['color'],
+                      child: Text(
+                        device['avatar'],
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
+                    if ((device['unread'] ?? 0) > 0)
+                      Positioned(
+                        right: -6,
+                        top: -6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.alertRed,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.primaryBackground, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                          child: Center(
+                            child: Text(
+                              (device['unread'] as int) > 99 ? '99+' : '${device['unread']}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -502,12 +557,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Online':
+      case 'Active':
         return AppColors.safeGreen;
       case 'Idle':
         return AppColors.warningYellow;
-      case 'Away':
-        return AppColors.borderLight;
       default:
         return AppColors.textSecondary;
     }
