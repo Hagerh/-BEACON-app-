@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 
+
 class PrivatechatScreen extends StatefulWidget {
   const PrivatechatScreen({super.key});
 
@@ -107,14 +108,29 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
         ),
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: avatarColor,
-              child: Text(
-                avatar,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+            InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: () {
+                // Navigate to the user's profile screen using named route and pass device info
+                Navigator.of(context).pushNamed(
+                  "/profile",
+                  arguments: {
+                    'name': userName,
+                    'avatar': avatar,
+                    'color': avatarColor,
+                    'status': status,
+                  },
+                );
+              },
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: avatarColor,
+                child: Text(
+                  avatar,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -140,17 +156,6 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.call),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Calling $userName...'),
-                  backgroundColor: AppColors.connectionTeal,
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {},
@@ -191,23 +196,7 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
             ),
           ),
 
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryBackground,
-              border: Border(
-                top: BorderSide(color: AppColors.textSecondary),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildQuickAction(Icons.location_on, 'Location', AppColors.alertRed),
-                _buildQuickAction(Icons.camera_alt, 'Photo', AppColors.connectionTeal),
-                _buildQuickAction(Icons.medical_services, 'SOS', AppColors.alertRed),
-              ],
-            ),
-          ),
+          
 
           Container(
             padding: const EdgeInsets.all(16),
@@ -271,42 +260,10 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
     );
   }
 
-  Widget _buildQuickAction(IconData icon, String label, Color color) {
-    return InkWell(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sending $label...'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   Widget _buildMessageBubble(Map<String, dynamic> message) {
-    final isMine = message['isMine'] as bool;
+    final isMine = message['isMine'] as bool;                                    ///////////////////////
     
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
