@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/presentation/widgets/footer_widget.dart';
 import 'package:projectdemo/presentation/widgets/profileImage_widget.dart';
 import 'package:projectdemo/presentation/widgets/userInfoCard_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final String? name;
+  final String? avatarLetter;
+  final Color? avatarColor;
+  final String? status;
+  final String? email;
+  final String? phone;
+  final String? address;
+  final String? bloodType;
+
+  const ProfileScreen({
+    super.key,
+    this.name,
+    this.avatarLetter,
+    this.avatarColor,
+    this.status,
+    this.email,
+    this.phone,
+    this.address,
+    this.bloodType,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +31,15 @@ class ProfileScreen extends StatelessWidget {
       builder: (context, orientation) {
         final isLandscape = orientation == Orientation.landscape;
 
-        return Scaffold(
+ 
+  final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+  // for sake of compatibility with navigation that passes arguments                 !IMPORTANT BY JOJO ASK TEAM
+  final displayName = name ?? args?['name'] as String? ?? 'Emergency Profile';
+  final displayAvatar = avatarLetter ?? args?['avatar'] as String? ?? 'U';
+  final displayColor = avatarColor ?? args?['color'] as Color? ?? Colors.blue;
+  final displayStatus = status ?? args?['status'] as String? ?? 'Active';
+
+  return Scaffold(
           appBar: AppBar(
             actions: [
               IconButton(
@@ -41,7 +67,16 @@ class ProfileScreen extends StatelessWidget {
           body: isLandscape
               ? Row(
                   children: [
-                    SizedBox(width: 250, child: const ProfileimageWidget()),
+                    SizedBox(
+                      width: 250,
+                      child: ProfileimageWidget(
+                        avatarLetter: displayAvatar,
+                        avatarColor: displayColor,
+                        title: displayName,
+                        subtitle: 'Status: $displayStatus',
+                        showCamera: args == null,
+                      ),
+                    ),
 
                     const VerticalDivider(width: 1),
 
@@ -50,7 +85,14 @@ class ProfileScreen extends StatelessWidget {
                         child: Center(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: UserinfocardWidget(),
+                            child: UserinfocardWidget(
+                              name: displayName,
+                              email: email ?? args?['email'] as String? ?? '',
+                              phone: phone ?? args?['phone'] as String? ?? '',
+                              address: address ?? args?['address'] as String? ?? '',
+                              bloodType: bloodType ?? args?['bloodType'] as String? ?? '',
+                              editable: args == null,
+                            ),
                           ),
                         ),
                       ),
@@ -61,15 +103,30 @@ class ProfileScreen extends StatelessWidget {
                   child: Center(
                     child: Column(
                       children: [
-                        const ProfileimageWidget(),
+                        ProfileimageWidget(
+                          avatarLetter: displayAvatar,
+                          avatarColor: displayColor,
+                          title: displayName,
+                          subtitle: 'Status: $displayStatus',
+                          showCamera: args == null,
+                        ),
                         const SizedBox(height: 16),
-                        UserinfocardWidget(),
+                        UserinfocardWidget(
+                          name: displayName,
+                          email: email ?? args?['email'] as String? ?? '',
+                          phone: phone ?? args?['phone'] as String? ?? '',
+                          address: address ?? args?['address'] as String? ?? '',
+                          bloodType: bloodType ?? args?['bloodType'] as String? ?? '',
+                          editable: args == null,
+                        ),
                       ],
                     ),
                   ),
                 ),
 
           floatingActionButton: const VoiceWidget(),
+
+          
         );
       },
     );
