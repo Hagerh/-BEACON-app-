@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/presentation/widgets/device_card.dart';
+import 'package:projectdemo/presentation/widgets/info_summary.dart';
+import 'package:projectdemo/presentation/widgets/quick_message_sheet.dart';
+import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 
 
 class PublicChatScreen extends StatefulWidget {
@@ -95,16 +99,6 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       _connectedDevices = allDevices.take(connectorCount).toList();
     });
   }
-
-
-
-
-
-
-
-
-
-
   final List<String> _predefinedMessages = [
     '🆘 Need immediate help!',
     '📍 Share my location',
@@ -114,46 +108,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
     '👮 Security alert',
   ];
 
-  final TextEditingController _broadcastController = TextEditingController();
-
   void _showBroadcastDialog() {
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.secondaryBackground,
-          title: const Text('Broadcast to all', style: TextStyle(color: AppColors.textPrimary)),
-          content: TextField(
-            controller: _broadcastController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Type a message to send to all connected devices',
-              hintStyle: TextStyle(color: AppColors.textSecondary),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _broadcastController.clear();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.connectionTeal),
-              onPressed: () {
-                final msg = _broadcastController.text.trim();
-                if (msg.isEmpty) return;
-                Navigator.of(context).pop();
-                _broadcastMessage(msg);
-                _broadcastController.clear();
-              },
-              child: const Text('Send'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => BroadcastDialog(onSend: (msg) => _broadcastMessage(msg)),
     );
   }
 
@@ -175,43 +133,17 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Send to ${device['name']}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+      builder: (context) => QuickMessageSheet(
+        device: device,
+        messages: _predefinedMessages,
+        onSend: (msg) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sent "$msg" to ${device['name']}'),
+              backgroundColor: AppColors.connectionTeal,
             ),
-            const SizedBox(height: 20),
-            ...(_predefinedMessages.map((msg) => ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.alertRed,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.send, color: Colors.white),
-              ),
-              title: Text(msg, style: const TextStyle(color: AppColors.textPrimary)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Sent "$msg" to ${device['name']}'),
-                    backgroundColor: AppColors.connectionTeal,
-                  ),
-                );
-              },
-            ))),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -230,7 +162,6 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
 
   @override
   void dispose() {
-    _broadcastController.dispose();
     super.dispose();
   }
 
@@ -262,41 +193,12 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryBackground,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.connectionTeal),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Builder(builder: (context) {
-                      final total = _connectedDevices.length;
-                      final connected = _connectedDevices.where((d) => (d['status'] ?? '').toString() == 'Active').length;
-                      final nonConnected = total - connected;
+          Builder(builder: (context) {
+            final total = _connectedDevices.length;
+            final connected = _connectedDevices.where((d) => (d['status'] ?? '').toString() == 'Active').length;
 
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildInfoItem(Icons.devices, '$connected', 'Connected'),
-                          const SizedBox(width: 40),
-                          _buildInfoItem(Icons.group_off, '$nonConnected', 'Not connected'),
-                          const SizedBox(width: 40),
-                          _buildInfoItem(Icons.devices_other, '$total', 'Total'),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ],
-            ),
-          ),
+            return InfoSummary(total: total, connected: connected);
+          }),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -336,7 +238,12 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
               itemCount: _connectedDevices.length,
               itemBuilder: (context, index) {
                 final device = _connectedDevices[index];
-                return _buildDeviceCard(context, device);
+                return DeviceCard(
+                  device: device,
+                  onChat: () => _openPrivateChat(context, device),
+                  onQuickSend: () => _showPredefinedMessages(context, device),
+                  onTap: () => _openPrivateChat(context, device),
+                );
               },
             ),
           ),
@@ -361,208 +268,4 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String value, String label, [Color? valueColor]) {
-    return Column(
-      children: [
-        Icon(icon, color: AppColors.connectionTeal, size: 28),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: valueColor ?? AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDeviceCard(BuildContext context, Map<String, dynamic> device) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: AppColors.secondaryBackground,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.borderLight),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: device['color'],
-                      child: Text(
-                        device['avatar'],
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    if ((device['unread'] ?? 0) > 0)
-                      Positioned(
-                        right: -6,
-                        top: -6,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.alertRed,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primaryBackground, width: 1.5),
-                          ),
-                          constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                          child: Center(
-                            child: Text(
-                              (device['unread'] as int) > 99 ? '99+' : '${device['unread']}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        device['name'],
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        device['deviceId'],
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.signal_cellular_alt,
-                            size: 14,
-                            color: _getSignalColor(device['signalStrength']),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${device['signalStrength']}%',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _getSignalColor(device['signalStrength']),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            device['distance'],
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(device['status']),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    device['status'],
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showPredefinedMessages(context, device),
-                    icon: const Icon(Icons.emergency, size: 18),
-                    label: const Text('Quick Send'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.alertRed,
-                      side: const BorderSide(color: AppColors.alertRed),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openPrivateChat(context, device),
-                    icon: const Icon(Icons.chat_bubble, size: 18),
-                    label: const Text('Chat'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.connectionTeal,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getSignalColor(int strength) {
-    if (strength >= 80) return AppColors.safeGreen;
-    if (strength >= 60) return AppColors.beaconOrange;
-    return AppColors.alertRed;
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Active':
-        return AppColors.safeGreen;
-      case 'Idle':
-        return AppColors.warningYellow;
-      default:
-        return AppColors.textSecondary;
-    }
-  }
 }
