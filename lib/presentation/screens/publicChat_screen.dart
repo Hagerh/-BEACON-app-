@@ -6,13 +6,11 @@ import 'package:projectdemo/presentation/widgets/info_summary.dart';
 import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 
-
 class PublicChatScreen extends StatefulWidget {
   const PublicChatScreen({super.key});
 
   @override
   State<PublicChatScreen> createState() => _PublicChatScreenState();
-
 }
 
 class _PublicChatScreenState extends State<PublicChatScreen> {
@@ -20,27 +18,26 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
   String _networkName = '';
   int _totalConnectors = 0;
 
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Get the network data  from joinNetwork screen
-    final Map<String, dynamic>? networkData = 
+    final Map<String, dynamic>? networkData =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    
+
     if (networkData != null) {
       _networkName = networkData['networkId'] ?? 'Unknown Network';
       _totalConnectors = networkData['connectors'] ?? 0;
-      
+
       // Load devices based on the network
       _loadDevicesForNetwork(_networkName, _totalConnectors);
     }
   }
 
-void _loadDevicesForNetwork(String networkName, int connectorCount) {
-    // TODO: Replace with real data 
-    
+  void _loadDevicesForNetwork(String networkName, int connectorCount) {
+    // TODO: Replace with real data
+
     final allDevices = [
       {
         'name': 'Sarah Mitchell',
@@ -95,10 +92,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
     ];
 
     setState(() {
-      
       _connectedDevices = allDevices.take(connectorCount).toList();
     });
   }
+
   final List<String> _predefinedMessages = [
     '🆘 Need immediate help!',
     '📍 Share my location',
@@ -111,7 +108,8 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
   void _showBroadcastDialog() {
     showDialog(
       context: context,
-      builder: (context) => BroadcastDialog(onSend: (msg) => _broadcastMessage(msg)),
+      builder: (context) =>
+          BroadcastDialog(onSend: (msg) => _broadcastMessage(msg)),
     );
   }
 
@@ -126,7 +124,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
     );
   }
 
-  void _showPredefinedMessages(BuildContext context, Map<String, dynamic> device) {
+  void _showPredefinedMessages(
+    BuildContext context,
+    Map<String, dynamic> device,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.secondaryBackground,
@@ -153,11 +154,7 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       device['unread'] = 0;
     });
 
-    Navigator.pushNamed(
-      context,
-      '/private_chat',
-      arguments: device,
-    );
+    Navigator.pushNamed(context, '/private_chat', arguments: device);
   }
 
   @override
@@ -165,10 +162,38 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
     super.dispose();
   }
 
+  void _showExitDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Exit"),
+          content: const Text("Are you sure you want to exit?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text("Exit"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Podcast '),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -188,17 +213,26 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
             tooltip: 'Broadcast',
             onPressed: _showBroadcastDialog,
           ),
-          
         ],
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () {
+            _showExitDialog();
+          },
+        ),
       ),
       body: Column(
         children: [
-          Builder(builder: (context) {
-            final total = _connectedDevices.length;
-            final connected = _connectedDevices.where((d) => (d['status'] ?? '').toString() == 'Active').length;
+          Builder(
+            builder: (context) {
+              final total = _connectedDevices.length;
+              final connected = _connectedDevices
+                  .where((d) => (d['status'] ?? '').toString() == 'Active')
+                  .length;
 
-            return InfoSummary(total: total, connected: connected);
-          }),
+              return InfoSummary(total: total, connected: connected);
+            },
+          ),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -214,7 +248,10 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.connectionTeal,
                     borderRadius: BorderRadius.circular(12),
@@ -253,13 +290,15 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
-
             onPressed: () {
               Navigator.pushNamed(context, "/resources");
             },
             backgroundColor: AppColors.buttonPrimary,
             heroTag: 'resourcesBtn',
-            child: const Icon(Icons.folder_shared, color: AppColors.primaryBackground),
+            child: const Icon(
+              Icons.folder_shared,
+              color: AppColors.primaryBackground,
+            ),
           ),
           const SizedBox(height: 12),
           const VoiceWidget(),
@@ -267,5 +306,4 @@ void _loadDevicesForNetwork(String networkName, int connectorCount) {
       ),
     );
   }
-
 }

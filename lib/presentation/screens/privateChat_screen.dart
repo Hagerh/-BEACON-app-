@@ -82,6 +82,7 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic>? deviceInfo = 

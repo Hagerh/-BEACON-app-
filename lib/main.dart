@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/business/bloc/cubit/network_cubit.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/privateChat_screen.dart';
 import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
@@ -38,7 +40,10 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         landingScreen: (context) => LandingScreen(),
-        networkScreen: (context) => Joinnetworkscreen(),
+        networkScreen: (context) => BlocProvider(
+          create: (context) => NetworkCubit()..loadNetworks(), 
+          child: const Joinnetworkscreen(),
+        ),
         createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) => ProfileScreen(),
         publicChatScreen: (context) => PublicChatScreen(),

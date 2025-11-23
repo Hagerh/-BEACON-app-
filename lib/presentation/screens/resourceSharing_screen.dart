@@ -77,7 +77,7 @@ class ResourceSharingScreen extends StatelessWidget {
       ),
 
       floatingActionButton: const VoiceWidget(),
-      bottomNavigationBar: const FooterWidget(currentPage: 1),
+  
     );
   }
 
