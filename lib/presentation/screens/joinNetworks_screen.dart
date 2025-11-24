@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/bloc/cubit/network_cubit.dart';
-import 'package:projectdemo/business/bloc/cubit/network_state.dart';
+import 'package:projectdemo/business/cubit/network_cubit.dart';
+import 'package:projectdemo/business/cubit/network_state.dart';
 import 'package:projectdemo/data/model/device_model.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 

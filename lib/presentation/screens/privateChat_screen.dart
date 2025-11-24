@@ -1,93 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/business/cubit/privateChat_cubit.dart';
+import 'package:projectdemo/business/cubit/privateChat_state.dart';
 import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/data/model/message_model.dart';
 
+class PrivatechatScreen extends StatelessWidget {
+    PrivatechatScreen({super.key});
 
-class PrivatechatScreen extends StatefulWidget {
-  const PrivatechatScreen({super.key});
-
-  @override
-  State<PrivatechatScreen> createState() => _PrivateChatScreenState();
-}
-
-class _PrivateChatScreenState extends State< PrivatechatScreen > {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'text': 'Hey! Are you safe?',
-      'isMine': false,
-      'time': '10:30 AM',
-      'isDelivered': true,
-    },
-    {
-      'text': 'Yes, I\'m okay. Just staying indoors.',
-      'isMine': true,
-      'time': '10:32 AM',
-      'isDelivered': true,
-    },
-    {
-      'text': 'Good to hear! Do you need any supplies?',
-      'isMine': false,
-      'time': '10:33 AM',
-      'isDelivered': true,
-    },
-    {
-      'text': 'I could use some water and batteries if possible',
-      'isMine': true,
-      'time': '10:35 AM',
-      'isDelivered': true,
-    },
-    {
-      'text': 'I have extras. I\'ll bring them over in about 30 mins',
-      'isMine': false,
-      'time': '10:36 AM',
-      'isDelivered': true,
-    },
-    {
-      'text': 'That would be amazing! Thank you so much',
-      'isMine': true,
-      'time': '10:37 AM',
-      'isDelivered': true,
-    },
-  ];
 
-  void _sendMessage() {
+  void _sendMessage(BuildContext context) {
+    final cubit = context.read<PrivateChatCubit>();
     if (_messageController.text.trim().isEmpty) return;
-    
-    setState(() {
-      _messages.add({
-        'text': _messageController.text,
-        'isMine': true,
-        'time': TimeOfDay.now().format(context),
-        'isDelivered': false,
-      });
-      _messageController.clear();
-    });
-    
+
+    cubit.sendMessage(_messageController.text);
+    _messageController.clear();
+
     // Auto scroll to bottom
     Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic>? deviceInfo = 
+    // The device info is extracted once to pass to the Cubit and the UI parts
+    final Map<String, dynamic>? deviceInfo =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    
+
     final String userName = deviceInfo?['name'] ?? 'User';
     final String avatar = deviceInfo?['avatar'] ?? 'U';
     final Color avatarColor = deviceInfo?['color'] ?? Colors.blue;
@@ -107,60 +55,66 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
             ),
           ),
         ),
-        title: Row(
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: () {
-                // Navigate to the user's profile screen using named route and pass device info
-                Navigator.of(context).pushNamed(
-                  "/profile",
-                  arguments: {
-                    'name': userName,
-                    'avatar': avatar,
-                    'color': avatarColor,
-                    'status': status,
+        title: BlocBuilder<PrivateChatCubit, PrivateChatState>(
+          builder: (context, state) {
+            return Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () {
+                    // Navigate to the user's profile screen using named route and pass device info
+                    Navigator.of(context).pushNamed(
+                      "/profile",
+                      arguments: {
+                        'name': userName,
+                        'avatar': avatar,
+                        'color': avatarColor,
+                        'status': status,
+                      },
+                    );
                   },
-                );
-              },
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: avatarColor,
-                child: Text(
-                  avatar,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    userName,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    status,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: status == 'Online' ? Colors.lightGreenAccent : Colors.grey[300],
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: avatarColor,
+                    child: Text(
+                      avatar,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userName,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: status == 'Online'
+                              ? Colors.lightGreenAccent
+                              : Colors.grey[300],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
         ],
       ),
       body: Column(
@@ -186,18 +140,21 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
           ),
 
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildMessageBubble(message);
+            child: BlocBuilder<PrivateChatCubit, PrivateChatState>(
+              builder: (context, state) {
+                final messages = state.messages;
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return _buildMessageBubble(context, message);
+                  },
+                );
               },
             ),
           ),
-
-          
 
           Container(
             padding: const EdgeInsets.all(16),
@@ -220,7 +177,9 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
                       style: const TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
-                        hintStyle: const TextStyle(color: AppColors.textSecondary),
+                        hintStyle: const TextStyle(
+                          color: AppColors.textSecondary,
+                        ),
                         filled: true,
                         fillColor: AppColors.primaryBackground,
                         border: OutlineInputBorder(
@@ -232,22 +191,27 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
                           vertical: 10,
                         ),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.attach_file, color: AppColors.textSecondary),
+                          icon: const Icon(
+                            Icons.attach_file,
+                            color: AppColors.textSecondary,
+                          ),
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Attachment feature coming soon')),
+                              const SnackBar(
+                                content: Text('Attachment feature coming soon'),
+                              ),
                             );
                           },
                         ),
                       ),
                       maxLines: null,
                       textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
+                      onSubmitted: (_) => _sendMessage(context),
                     ),
                   ),
                   const SizedBox(width: 12),
                   FloatingActionButton(
-                    onPressed: _sendMessage,
+                    onPressed: () => _sendMessage(context),
                     backgroundColor: AppColors.connectionTeal,
                     mini: true,
                     child: const Icon(Icons.send, color: Colors.white),
@@ -261,15 +225,15 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
     );
   }
 
-  
+  Widget _buildMessageBubble(BuildContext context, Message message) {
+    final isMine = message.isMine;
 
-  Widget _buildMessageBubble(Map<String, dynamic> message) {
-    final isMine = message['isMine'] as bool;                                    ///////////////////////
-    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMine) ...[
@@ -282,13 +246,18 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMine
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: isMine 
-                        ? AppColors.connectionTeal 
+                    color: isMine
+                        ? AppColors.connectionTeal
                         : AppColors.secondaryBackground,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
@@ -296,12 +265,12 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
                       bottomLeft: Radius.circular(isMine ? 18 : 4),
                       bottomRight: Radius.circular(isMine ? 4 : 18),
                     ),
-                    border: !isMine 
+                    border: !isMine
                         ? Border.all(color: AppColors.textSecondary)
                         : null,
                   ),
                   child: Text(
-                    message['text'],
+                    message.text,
                     style: TextStyle(
                       color: isMine ? Colors.white : AppColors.textPrimary,
                       fontSize: 15,
@@ -313,7 +282,7 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      message['time'],
+                      message.time.format(context),
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -322,10 +291,10 @@ class _PrivateChatScreenState extends State< PrivatechatScreen > {
                     if (isMine) ...[
                       const SizedBox(width: 4),
                       Icon(
-                        message['isDelivered'] ? Icons.done_all : Icons.done,
+                        message.isDelivered ? Icons.done_all : Icons.done,
                         size: 14,
-                        color: message['isDelivered'] 
-                            ? AppColors.connectionTeal 
+                        color: message.isDelivered
+                            ? AppColors.connectionTeal
                             : AppColors.textSecondary,
                       ),
                     ],

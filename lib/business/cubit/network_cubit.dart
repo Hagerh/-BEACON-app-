@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/data/model/device_model.dart';
-import 'package:projectdemo/business/bloc/cubit/network_state.dart';
+import 'package:projectdemo/business/cubit/network_state.dart';
 
 class NetworkCubit extends Cubit<NetworkState> {
   NetworkCubit() : super(NetworkInitial()); // Initial state

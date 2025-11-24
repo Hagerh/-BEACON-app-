@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/data/model/deviceDetiles_model.dart';
 
 class DeviceCard extends StatelessWidget {
-  final Map<String, dynamic> device;
+  final DeviceDetail device;
   final VoidCallback onChat;
   final VoidCallback onQuickSend;
   final VoidCallback? onTap;
@@ -39,9 +40,9 @@ class DeviceCard extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: device['color'] ?? AppColors.infoBlue,
+                         backgroundColor: device.color ?? AppColors.infoBlue,
                         child: Text(
-                          device['avatar'] ?? '?',
+                          device.avatar ?? '?',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -49,7 +50,7 @@ class DeviceCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if ((device['unread'] ?? 0) > 0)
+                      if ((device.unread ?? 0) > 0)
                         Positioned(
                           right: -6,
                           top: -6,
@@ -63,7 +64,7 @@ class DeviceCard extends StatelessWidget {
                             constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
                             child: Center(
                               child: Text(
-                                (device['unread'] as int) > 99 ? '99+' : '${device['unread']}',
+                                (device.unread as int) > 99 ? '99+' : '${device.unread}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -81,7 +82,7 @@ class DeviceCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          device['name'] ?? 'Unknown',
+                          device.name ?? 'Unknown',
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -90,7 +91,7 @@ class DeviceCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          device['deviceId'] ?? '',
+                          device.deviceId?? '',
                           style: const TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -102,21 +103,21 @@ class DeviceCard extends StatelessWidget {
                             Icon(
                               Icons.signal_cellular_alt,
                               size: 14,
-                              color: _getSignalColor(device['signalStrength'] ?? 0),
+                              color: _getSignalColor(device.signalStrength?? 0),
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${device['signalStrength'] ?? 0}%',
+                              '${device.signalStrength ?? 0}%',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: _getSignalColor(device['signalStrength'] ?? 0),
+                                color: _getSignalColor(device.signalStrength ?? 0),
                               ),
                             ),
                             const SizedBox(width: 12),
                             const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Text(
-                              device['distance'] ?? '',
+                              device.distance?? '',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -130,11 +131,11 @@ class DeviceCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(device['status'] ?? ''),
+                      color: _getStatusColor(device.status ?? ''),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      device['status'] ?? '',
+                      device.status?? '',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

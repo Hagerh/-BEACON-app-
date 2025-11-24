@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/bloc/cubit/network_cubit.dart';
+import 'package:projectdemo/business/cubit/networkDashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/network_cubit.dart';
+import 'package:projectdemo/business/cubit/privateChat_cubit.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/screens/privateChat_screen.dart';
 import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
@@ -11,7 +13,7 @@ import 'package:projectdemo/presentation/screens/publicChat_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
-
+import 'package:projectdemo/constants/settings.dart';
 void main() {
   runApp(MyApp());
 }
@@ -41,17 +43,42 @@ class MyApp extends StatelessWidget {
       routes: {
         landingScreen: (context) => LandingScreen(),
         networkScreen: (context) => BlocProvider(
-          create: (context) => NetworkCubit()..loadNetworks(), 
+          create: (context) => NetworkCubit()..loadNetworks(),
           child: const Joinnetworkscreen(),
         ),
         createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) => ProfileScreen(),
-        publicChatScreen: (context) => PublicChatScreen(),
-        chatScreen: (context) => PrivatechatScreen(),
+        
+        publicChatScreen: (context) {
+          //Extract arguments passed from Joinnetworkscreen
+          final networkData = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+         
+          final networkId = networkData?['networkId'] ?? 'Unknown Network';
+          final connectors = networkData?['connectors'] as int? ?? 0;
+          
+          return BlocProvider(
+            // IMMEDIATELY call loadDevices with arguments
+            create: (context) => NetworkDashboardCubit()
+              ..loadDevices(networkId, connectors), 
+            child: const PublicChatScreen(),
+          );
+        },
+          chatScreen: (context) {
+          //Extract arguments passed from PublicChatScreen
+          final deviceInfo = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final name = deviceInfo?['name'] ?? 'User';
+          final status = deviceInfo?['status'] ?? 'Online';
+
+          return BlocProvider(
+            // Pass  initial data to the Cubit's constructor
+            create: (context) => PrivateChatCubit(name: name, status: status),
+            child:  PrivatechatScreen(),
+          );
+        },
 
         resourceScreen: (context) => ResourceSharingScreen(),
       },
-    
     );
   }
 }
+ 
