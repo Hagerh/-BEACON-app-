@@ -8,6 +8,7 @@ class UserinfocardWidget extends StatefulWidget {
   final String? address;
   final String? bloodType;
   final bool editable;
+  final void Function(Map<String, String> data)? onSave; // Callback for save action
 
   const UserinfocardWidget({
     super.key,
@@ -16,7 +17,7 @@ class UserinfocardWidget extends StatefulWidget {
     this.phone,
     this.address,
     this.bloodType,
-    this.editable = true,
+    this.editable = true, this.onSave,
   });
 
   @override
@@ -61,6 +62,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
                   Text(
                     'User Information',
                     style: TextStyle(
+                      overflow: TextOverflow.ellipsis,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: AppColors.alertRed,
@@ -164,7 +166,13 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // TODO: Process data / save changes
+                      widget.onSave!({
+                        'name': _nameController.text,
+                        'email': _emailController.text,
+                        'phone': _phoneController.text,
+                        'address': _addressController.text,
+                        'bloodType': _bloodTypeController.text,
+                      });
                     }
                   },
                   style: ElevatedButton.styleFrom(

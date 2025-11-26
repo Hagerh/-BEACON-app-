@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:projectdemo/data/model/device_model.dart';
 
@@ -26,6 +25,7 @@ class NetworkLoaded extends NetworkState {
     );
   }
 }
+
 
 class NetworkError extends NetworkState {
   final String message;

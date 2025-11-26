@@ -1,10 +1,9 @@
-
 import 'package:flutter/material.dart';
 
 class Message {
   final String text;
   final bool isMine;
-  final TimeOfDay time;
+  final TimeOfDay time; 
   final bool isDelivered;
 
   Message({

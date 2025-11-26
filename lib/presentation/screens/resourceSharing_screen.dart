@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
-import '../widgets/footer_widget.dart';
 
 class ResourceSharingScreen extends StatelessWidget {
   const ResourceSharingScreen({super.key});

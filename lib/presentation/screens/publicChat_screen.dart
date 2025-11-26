@@ -72,7 +72,7 @@ class PublicChatScreen extends StatelessWidget {
   void _openPrivateChat(BuildContext context, DeviceDetail device) {
     //  Tell the Cubit to mark unread count as 0
     context.read<NetworkDashboardCubit>().markDeviceMessagesAsRead(
-      device.deviceId,
+      device.deviceId, 
     );
 
     Navigator.pushNamed(
