@@ -34,6 +34,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_bloc: ^9.1.1
   bloc: ^9.1.0
+  sqflite: ^2.2.8
+  path: ^1.8.4
   
 
 dev_dependencies:
@@ -84,3 +86,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+ 
