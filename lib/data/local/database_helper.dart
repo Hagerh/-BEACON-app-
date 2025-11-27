@@ -231,4 +231,81 @@ class DatabaseHelper {
       'status': 'Pending',
     });
   }
+
+  //
+  Future<List<Device>> fetchNetworkSummaries() async {
+    final db = await instance.database;
+
+    final rows = await db.rawQuery('''
+      SELECT n.network_id, n.network_name, n.host_device_id,
+        (SELECT COUNT(*) FROM Devices d WHERE d.network_id = n.network_id) AS connectors,
+        (SELECT last_seen_at FROM Devices d WHERE d.device_id = n.host_device_id) AS last_seen_at,
+        (SELECT status FROM Devices d WHERE d.device_id = n.host_device_id) AS host_status
+      FROM Networks n
+      ORDER BY n.created_at DESC
+    ''');
+
+    return rows.map((r) => Device.fromMap(r as Map<String, dynamic>)).toList();
+  }
+
+  // fetch devices for a given network name
+  Future<List<DeviceDetail>> fetchDevicesForNetwork(String networkName, int limit) async {
+    final db = await instance.database;
+    final networks = await db.query('Networks', where: 'network_name = ?', whereArgs: [networkName], limit: 1);
+    if (networks.isEmpty) return [];
+    final nid = networks.first['network_id'];
+
+    final rows = await db.query('Devices', where: 'network_id = ?', whereArgs: [nid], limit: limit);
+    return rows.map((r) => DeviceDetail.fromMap(r as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<Message>> fetchRecentMessages({
+    int? networkId,
+    String? forDeviceId,
+    int limit = 50,
+  }) async {
+    final db = await instance.database;
+
+    List<Map<String, Object?>> rows;
+
+    if (forDeviceId != null) {
+      if (networkId != null) {
+        rows = await db.query(
+          'Messages',
+          where: 'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
+          whereArgs: [networkId, forDeviceId, forDeviceId],
+          orderBy: 'sent_at ASC',
+          limit: limit,
+        );
+      } else {
+        rows = await db.query(
+          'Messages',
+          where: 'sender_device_id = ? OR receiver_device_id = ?',
+          whereArgs: [forDeviceId, forDeviceId],
+          orderBy: 'sent_at ASC',
+          limit: limit,
+        );
+      }
+    } else if (networkId != null) {
+      rows = await db.query(
+        'Messages',
+        where: 'network_id = ?',
+        whereArgs: [networkId],
+        orderBy: 'sent_at ASC',
+        limit: limit,
+      );
+    } else {
+      rows = await db.query('Messages', orderBy: 'sent_at ASC', limit: limit);
+    }
+
+    return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
+  }
+
+  // color parsing is handled in model factories now
+
+  Future close() async {
+    final db = _database;
+    if (db != null) await db.close();
+    _database = null;
+  }
 }
