@@ -2,40 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/business/cubit/privateChat_state.dart';
 import 'package:projectdemo/data/model/message_model.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
 
 class PrivateChatCubit extends Cubit<PrivateChatState> {
+  final int? networkId;
+
   PrivateChatCubit({
+    this.networkId,
     required String name,
     required String status,
   }) : super(
           PrivateChatState(
-            messages: _initialMessages,
+            messages: [],
             recipientName: name,
             recipientStatus: status,
           ),
-        );
+        ) {
+    // asynchronously load recent messages from local DB
+    Future.microtask(() => _loadInitialMessages());
+  }
 
-  // Initial dummy messages 
-  static final List<Message> _initialMessages = [
-    Message(
-      text: 'Hey! Are you safe?',
-      isMine: false,
-      time: TimeOfDay(hour: 10, minute: 30),
-      isDelivered: true,
-    ),
-    Message(
-      text: 'Yes, I\'m okay. Just staying indoors.',
-      isMine: true,
-      time:  TimeOfDay(hour: 10, minute: 32),
-      isDelivered: true,
-    ),
-    Message(
-      text: 'Good to hear! Do you need any supplies?',
-      isMine: false,
-      time: TimeOfDay(hour: 10, minute: 33),
-      isDelivered: true,
-    ),
-  ];
+  Future<void> _loadInitialMessages() async {
+    try {
+      final msgs = await DatabaseHelper.instance.fetchRecentMessages(
+        networkId: networkId,
+        limit: 50,
+      );
+      emit(state.copyWith(messages: msgs));
+    } catch (e) {
+      print('Failed to load messages: $e');
+    }
+  }
 
   void sendMessage(String text) {
     if (text.trim().isEmpty) return;
