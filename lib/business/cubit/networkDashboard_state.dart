@@ -1,5 +1,5 @@
 import 'package:meta/meta.dart';
-import 'package:projectdemo/data/model/deviceDetiles_model.dart';
+import 'package:projectdemo/data/model/deviceDetail_model.dart';
 
 @immutable
 abstract class NetworkDashboardState {}

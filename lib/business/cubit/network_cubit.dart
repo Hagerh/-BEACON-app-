@@ -11,7 +11,7 @@ class NetworkCubit extends Cubit<NetworkState> {
   // Simulates fetching initial network data
   Future<void> loadNetworks() async {
     
-     emit(NetworkLoading());
+    emit(NetworkLoading());
     try {
       // fetch from local sqlite
       final networks = await DatabaseHelper.instance.fetchNetworkSummaries();

@@ -4,7 +4,7 @@ import 'package:projectdemo/business/cubit/networkDashboard_cubit.dart';
 import 'package:projectdemo/business/cubit/networkDashboard_state.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/constants/settings.dart';
-import 'package:projectdemo/data/model/deviceDetiles_model.dart';
+import 'package:projectdemo/data/model/deviceDetail_model.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import 'package:projectdemo/presentation/widgets/device_card.dart';
 import 'package:projectdemo/presentation/widgets/info_summary.dart';

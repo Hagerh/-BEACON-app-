@@ -5,7 +5,7 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../model/device_model.dart';
-import '../model/deviceDetiles_model.dart';
+import '../model/deviceDetail_model.dart';
 import '../model/message_model.dart';
 
 class DatabaseHelper {
