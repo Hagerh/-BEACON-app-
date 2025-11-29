@@ -69,7 +69,7 @@ class P2PService {
 
   // ---------------- CLIENT METHODS ------------------
 
-  Future<void> joinNetwork(UserProfile me) async {
+  Future<void> initializeClient(UserProfile me) async {
     isServer = false;
     currentUser = me;
 
@@ -93,7 +93,7 @@ class P2PService {
     sendJoin();
   }
 
-  Future<void> discoverNetworks() async {
+  Future<void> startDiscovery() async {
     if (_client == null) return;
     if (isScanning) return;
 

@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../model/device_model.dart';
 import '../model/deviceDetail_model.dart';
 import '../model/message_model.dart';
+import '../model/userProfile_model.dart';
 
 class DatabaseHelper {
   // use singlton pattern
@@ -301,7 +302,98 @@ class DatabaseHelper {
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
   }
 
-  // color parsing is handled in model factories now
+
+
+  // Get user profile by device_id (joins Users and Devices tables)
+  Future<UserProfile?> getUserProfile(String deviceId) async {
+    final db = await instance.database;
+
+    final rows = await db.rawQuery('''
+      SELECT 
+        u.username,
+        u.email,
+        u.phone,
+        u.address,
+        u.blood_type,
+        u.device_id,
+        d.status,
+        d.avatar,
+        d.color
+      FROM Users u
+      LEFT JOIN Devices d ON u.device_id = d.device_id
+      WHERE u.device_id = ?
+      LIMIT 1
+    ''', [deviceId]);
+
+    if (rows.isEmpty) return null;
+    return UserProfile.fromMap(rows.first as Map<String, dynamic>);
+  }
+
+  // Save or update user profile
+  Future<void> saveUserProfile(UserProfile profile) async {
+    final db = await instance.database;
+
+    final existingUsers = await db.query(
+      'Users',
+      where: 'device_id = ?',
+      whereArgs: [profile.deviceId],
+      limit: 1,
+    );
+
+    final userData = profile.toUserMap();
+
+    if (existingUsers.isEmpty) {
+      // Insert new user
+      await db.insert('Users', userData);
+    } else {
+      // Update existing user
+      await db.update(
+        'Users',
+        userData,
+        where: 'device_id = ?',
+        whereArgs: [profile.deviceId],
+      );
+    }
+
+    // Update or insert device info (avatar and color)
+    final existingDevices = await db.query(
+      'Devices',
+      where: 'device_id = ?',
+      whereArgs: [profile.deviceId],
+      limit: 1,
+    );
+
+    final profileMap = profile.toMap();
+    final deviceData = {
+      'device_id': profile.deviceId,
+      'name': profile.name,
+      'status': profile.status,
+      'avatar': profile.avatarLetter,
+      'color': profileMap['color'],
+    };
+
+    if (existingDevices.isEmpty) {
+      final networks = await db.query('Networks', limit: 1);
+      if (networks.isNotEmpty) {
+        deviceData['network_id'] = networks.first['network_id'];
+        deviceData['is_host'] = 0;
+        await db.insert('Devices', deviceData);
+      }
+    } else {
+      // Update existing device
+      await db.update(
+        'Devices',
+        {
+          'name': profile.name,
+          'status': profile.status,
+          'avatar': profile.avatarLetter,
+          'color': profileMap['color'],
+        },
+        where: 'device_id = ?',
+        whereArgs: [profile.deviceId],
+      );
+    }
+  }
 
   Future close() async {
     final db = _database;
