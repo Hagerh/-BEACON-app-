@@ -113,11 +113,11 @@ class P2PService {
   }
 
   Future<void> leaveNetwork() async {
-    if (!isServer){
+    if (!isServer) {
       sendLeave();
       disconnect();
     }
-}
+  }
 
   // ---------------- PERMISSIONS ------------------
 
@@ -177,34 +177,34 @@ class P2PService {
     });
   }
 
-void sendMemberList(String clientId) {
-  _sendToOne(clientId, {
-    "type": "member_list",
-    "from": currentUser!.deviceId,
-    "to": clientId,
-    "members": _members
-        .map((m) => {"deviceId": m.deviceId, "name": m.name})
-        .toList(),
-  });
-}
+  void sendMemberList(String clientId) {
+    _sendToOne(clientId, {
+      "type": "member_list",
+      "from": currentUser!.deviceId,
+      "to": clientId,
+      "members": _members
+          .map((m) => {"deviceId": m.deviceId, "name": m.name})
+          .toList(),
+    });
+  }
 
-void broadcastMemberAdded(String deviceId, String name) {
-  _sendToAll({
-    "type": "member_added",
-    "from": currentUser!.deviceId,
-    "to": "ALL",
-    "message": ({"deviceId": deviceId, "name": name}),
-  });
-}
+  void broadcastMemberAdded(String deviceId, String name) {
+    _sendToAll({
+      "type": "member_added",
+      "from": currentUser!.deviceId,
+      "to": "ALL",
+      "message": ({"deviceId": deviceId, "name": name}),
+    });
+  }
 
-void broadcastMemberRemoved(String deviceId) {
-  _sendToAll({
-    "type": "member_removed",
-    "from": currentUser!.deviceId,
-    "to": "ALL",
-    "message": deviceId,
-  });
-}
+  void broadcastMemberRemoved(String deviceId) {
+    _sendToAll({
+      "type": "member_removed",
+      "from": currentUser!.deviceId,
+      "to": "ALL",
+      "message": deviceId,
+    });
+  }
 
   // ---------------- LOW-LEVEL SEND HELPERS ------------------
 
@@ -263,7 +263,7 @@ void broadcastMemberRemoved(String deviceId) {
           String deviceId = data["from"];
           String name = data["message"] ?? "Unknown";
 
-              // Check if network is full
+          // Check if network is full
           if (_members.length >= _maxMembers!) {
             _sendToOne(deviceId, {
               "type": "network_full",
@@ -273,12 +273,12 @@ void broadcastMemberRemoved(String deviceId) {
             });
             return;
           }
-  
+
           _addMember(deviceId, name);
-        
+
           // Send full member list to NEW client only
           sendMemberList(deviceId);
-          
+
           // Broadcast to ALL other clients that someone joined
           broadcastMemberAdded(deviceId, name);
         }
@@ -319,15 +319,14 @@ void broadcastMemberRemoved(String deviceId) {
         }
         break;
 
-        case "network_full":
-          if (!isServer) {
-            // Handle network full - maybe show error to user
-            debugPrint("Cannot join: ${data["message"]}");
-            disconnect();
-          }
-          break;
+      case "network_full":
+        if (!isServer) {
+          // Handle network full - maybe show error to user
+          debugPrint("Cannot join: ${data["message"]}");
+          disconnect();
+        }
+        break;
     }
-
   }
 
   // ---------------- MEMBERS MANAGEMENT ------------------
@@ -355,35 +354,35 @@ void broadcastMemberRemoved(String deviceId) {
 
   // ---------------- DISCONNECT ------------------
 
-void disconnect() {
-  // Clear all data
-  _members.clear();
-  _membersController.add(List.unmodifiable(_members));
-  
-  _discoveryController.add([]);  
-  
-  // Dispose the P2P connections
-  _host?.dispose();
-  _client?.dispose();
-  
-  // Reset ALL state
-  _host = null;
-  _client = null;
-  isServer = false;
-  currentUser = null;
-  _maxMembers = null;  
-  isScanning = false;  
-}
+  void disconnect() {
+    // Clear all data
+    _members.clear();
+    _membersController.add(List.unmodifiable(_members));
 
-// ---------------- DISPOSE ------------------
-void dispose() { 
-  //TODO: call this on app shutdown
-  // Close all controllers when app is shutting down
-  if (!_discoveryController.isClosed) _discoveryController.close();
-  if (!_membersController.isClosed) _membersController.close();
-  if (!_messagesController.isClosed) _messagesController.close();
-  
-  _host?.dispose();
-  _client?.dispose();
+    _discoveryController.add([]);
 
+    // Dispose the P2P connections
+    _host?.dispose();
+    _client?.dispose();
+
+    // Reset ALL state
+    _host = null;
+    _client = null;
+    isServer = false;
+    currentUser = null;
+    _maxMembers = null;
+    isScanning = false;
+  }
+
+  // ---------------- DISPOSE ------------------
+  void dispose() {
+    //TODO: call this on app shutdown
+    // Close all controllers when app is shutting down
+    if (!_discoveryController.isClosed) _discoveryController.close();
+    if (!_membersController.isClosed) _membersController.close();
+    if (!_messagesController.isClosed) _messagesController.close();
+
+    _host?.dispose();
+    _client?.dispose();
+  }
 }
