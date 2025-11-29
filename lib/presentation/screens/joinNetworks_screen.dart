@@ -1,48 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/business/cubit/network_cubit.dart';
 import 'package:projectdemo/business/cubit/network_state.dart';
-import 'package:projectdemo/data/model/device_model.dart';
+import 'package:projectdemo/data/model/userProfile_model.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
-class Joinnetworkscreen extends StatelessWidget {
-  const Joinnetworkscreen({super.key});
+class Joinnetworkscreen extends StatefulWidget {
+  final UserProfile currentUser;
 
-  // here the ui listens to the NetworkCubit by using BlocBuilder.
-  // BlocBuilder rebuilds only this widget when NetworkLoaded state changes
-  Widget _buildRefreshButton(BuildContext context) {
-    return BlocBuilder<NetworkCubit, NetworkState>(
-      // Only rebuild for NetworkLoaded state, as that contains the refreshing status
-      buildWhen: (previous, current) => current is NetworkLoaded,
-      builder: (context, state) {
-        bool isRefreshing = false;
-        if (state is NetworkLoaded) {
-          isRefreshing = state.isRefreshing;
-        }
-        return ElevatedButton(
-          onPressed: isRefreshing
-              ? null
-              : () => context.read<NetworkCubit>().refreshNetworks(),
-          child: isRefreshing
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text("Refresh"),
-        );
-      },
-    );
+  const Joinnetworkscreen({
+    super.key,
+    required this.currentUser,
+  });
+
+  @override
+  State<Joinnetworkscreen> createState() => _JoinnetworkscreenState();
+}
+
+class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Start discovering networks when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NetworkCubit>().startDiscovery(widget.currentUser);
+    });
   }
+
+  @override
+  void dispose() {
+    // Stop discovery when leaving screen
+    context.read<NetworkCubit>().stopDiscovery();
+    super.dispose();
+  }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Connected Network "),
+        title: const Text("Join Network"),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -58,28 +57,128 @@ class Joinnetworkscreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Padding(
+          Container(
             padding: const EdgeInsets.all(16.0),
-            child: _buildRefreshButton(context),
+            color: Colors.blue.withOpacity(0.1),
+            child: Row(
+              children: [
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  "Scanning for nearby networks...",
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: BlocBuilder<NetworkCubit, NetworkState>(
+            child: BlocConsumer<NetworkCubit, NetworkState>(
+              listener: (context, state) {
+                if (state is NetworkConnected) {
+                  // Navigate to dashboard after successful connection
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/dashboard',
+                    arguments: {
+                      'device': state.device,
+                    },
+                  );
+                } else if (state is NetworkError) {
+                  // Show error message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
               builder: (context, state) {
                 if (state is NetworkInitial || state is NetworkLoading) {
-                  // Show loading indicator
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text("Initializing P2P discovery..."),
+                      ],
+                    ),
+                  );
                 } else if (state is NetworkLoaded) {
-                  // Display the list of networks
                   final networks = state.networks;
                   if (networks.isEmpty) {
-                    // Display a message if no networks are found
-                    return const Center(child: Text("No networks found."));
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.wifi_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "No networks found nearby",
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            "Make sure a host has created a network",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
                   }
-                  // Build the list of network cards
-                  return _buildNetworkCard(context, state.networks);
+                  return _buildNetworkList(context, networks);
+                } else if (state is NetworkConnecting) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Connecting to ${state.device.deviceName}...",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  );
                 } else if (state is NetworkError) {
-                  // Display an error message
-                  return Center(child: Text("Error: ${state.message}"));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Error: ${state.message}",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () => context
+                              .read<NetworkCubit>()
+                              .startDiscovery(widget.currentUser),
+                          child: const Text("Try Again"),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 return const Center(child: Text("Unknown state."));
@@ -91,63 +190,88 @@ class Joinnetworkscreen extends StatelessWidget {
       floatingActionButton: const VoiceWidget(),
     );
   }
-}
 
-Widget _buildNetworkCard(BuildContext context, List<Device> networks) {
-  return ListView.builder(
-    itemCount: networks.length,
-    itemBuilder: (context, index) {
-      final device = networks[index];
-      return GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/public_chat',
-            arguments: {
-              'networkId': device.id,
-              'networkStatus': device.status,
-              'lastSeen': device.lastSeen,
-              'connectors': device.connectors,
-            },
-          );
-        },
-        child: Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  Widget _buildNetworkList(
+    BuildContext context,
+    List<BleDiscoveredDevice> networks,
+  ) {
+    return ListView.builder(
+      itemCount: networks.length,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemBuilder: (context, index) {
+        final device = networks[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          elevation: 2,
           child: ListTile(
-            leading: Icon(
-              device.status == "Connected" ? Icons.wifi : Icons.wifi_off,
-              color: device.status == "Connected" ? Colors.green : Colors.red,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.wifi,
+                color: Colors.blue,
+                size: 28,
+              ),
             ),
-            title: Text(device.id),
+            title: Text(
+              device.deviceName,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.info, size: 16),
+                    const Icon(Icons.devices, size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text("Status: ${device.status}"),
+                    Text(
+                      device.deviceAddress,
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ],
                 ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, size: 16),
+                    const Icon(Icons.signal_cellular_alt,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text("Last Seen: ${device.lastSeen}"),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 16),
-                    const SizedBox(width: 4),
-                    Text("Connectors: ${device.connectors}"),
+                    const Text(
+                      "Available",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
+            trailing: ElevatedButton(
+              onPressed: () {
+                context.read<NetworkCubit>().connectToNetwork(device);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              child: const Text("Join"),
+            ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 }

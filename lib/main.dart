@@ -15,12 +15,16 @@ import 'package:projectdemo/presentation/screens/profile_screen.dart';
 import 'package:projectdemo/constants/settings.dart';
 import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
 
+import 'package:projectdemo/services/p2p_service.dart';
+import 'package:projectdemo/data/model/userProfile_model.dart';
+
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final P2PService p2pService = P2PService();
+  MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -43,10 +47,27 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         landingScreen: (context) => LandingScreen(),
-        networkScreen: (context) => BlocProvider(
-          create: (context) => NetworkCubit()..loadNetworks(),
-          child: const Joinnetworkscreen(),
-        ),
+
+        networkScreen: (context) {
+          // TODO: Get actual current user from your auth/storage
+          final currentUser = UserProfile(
+            name: 'My Device',
+            deviceId: 'device_${DateTime.now().millisecondsSinceEpoch}',
+            avatarLetter: 'M',
+            avatarColor: Colors.blue,
+            status: 'Active',
+            email: 'user@example.com',
+            phone: '+1234567890',
+            address: 'Unknown',
+            bloodType: 'O+',
+          );
+
+          return BlocProvider(
+            create: (context) => NetworkCubit(p2pService: p2pService),
+
+            child: Joinnetworkscreen(currentUser: currentUser),
+          );
+        },
         createNetworkScreen: (context) => CreateNetworkScreen(),
         profileScreen: (context) {
           // Arguments are passed when viewing a peer profile (from PrivateChatScreen)
@@ -67,14 +88,12 @@ class MyApp extends StatelessWidget {
               ModalRoute.of(context)?.settings.arguments
                   as Map<String, dynamic>?;
 
-          final networkId = networkData?['networkId'] ?? 'Unknown Network';
-          final connectors = networkData?['connectors'] as int? ?? 0;
+          final networkName = networkData?['networkName'] ?? 'Unknown Network';
 
           return BlocProvider(
             // IMMEDIATELY call loadDevices with arguments
-            create: (context) =>
-                NetworkDashboardCubit()..loadDevices(networkId, connectors),
-            child: const PublicChatScreen(),
+            create: (context) => NetworkDashboardCubit(p2pService: p2pService),
+            child: PublicChatScreen(networkName: networkName),
           );
         },
         chatScreen: (context) {
@@ -84,10 +103,20 @@ class MyApp extends StatelessWidget {
                   as Map<String, dynamic>?;
           final name = deviceInfo?['name'] ?? 'User';
           final status = deviceInfo?['status'] ?? 'Online';
+          final deviceId = deviceInfo?['deviceId'] ?? 'UnknownID';
 
           return BlocProvider(
             // Pass  initial data to the Cubit's constructor
-            create: (context) => PrivateChatCubit(name: name, status: status),
+            create: (context) => PrivateChatCubit(
+              p2pService: p2pService,
+
+              recipientName: name,
+
+              recipientDeviceId: deviceId,
+
+              recipientStatus: status,
+            ),
+
             child: PrivatechatScreen(),
           );
         },
