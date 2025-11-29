@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
 import '../widgets/beaconLogo_widget.dart';
 import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
@@ -136,29 +135,6 @@ class _LandingScreenState extends State<LandingScreen> {
                           // Spacer to push the Exit button to the bottom
                           const Spacer(),
 
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: ListTile(
-                              leading: const Icon(
-                                Icons.logout,
-                                color: AppColors.alertRed,
-                              ),
-                              title: const Text(
-                                "Leave",
-                                style: TextStyle(color: AppColors.alertRed),
-                              ),
-                              onTap: () {
-                                // Placeholder for actual logout leave logic
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Leave functionality Tapped!',
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
                         ],
                       ),
                     ),

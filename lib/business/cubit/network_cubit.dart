@@ -1,7 +1,6 @@
 
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/data/model/device_model.dart';
 import 'package:projectdemo/business/cubit/network_state.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 

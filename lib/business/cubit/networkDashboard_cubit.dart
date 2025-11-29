@@ -1,7 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/business/cubit/networkDashboard_state.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/data/model/deviceDetiles_model.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {

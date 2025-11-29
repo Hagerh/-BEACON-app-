@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/data/model/device_model.dart';
 
-//this is the state file for NetworkCubit that manages network-related states
 @immutable
 abstract class NetworkState {}
 class NetworkInitial extends NetworkState {}
