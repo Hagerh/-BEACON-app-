@@ -3,47 +3,70 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/constants/colors.dart';
 import 'package:projectdemo/data/model/userProfile_model.dart';
 import 'package:projectdemo/business/cubit/userProfile_state.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit() : super(ProfileLoading());
 
-  // Simulates fetching profile data based on arguments
   Future<void> loadProfile(Map<String, dynamic>? args) async {
     emit(ProfileLoading());
 
-    // If args is null, we assume the user is viewing their own profile.
     final bool isViewingSelf = args == null || args['isSelf'] == true; 
 
     try {
-      UserProfile user;
+      final db = DatabaseHelper.instance;
+      UserProfile? user;
       
       if (isViewingSelf) {
-        // ---  (Editable) ---
-        // TODO: Replace with actual SQLite/Device ID fetch 
-        user = UserProfile(
-          name: 'Current User',
-          avatarLetter: 'C',
-          avatarColor: AppColors.connectionTeal,
-          status: 'Active',
-          email: 'user@beacon.net',
-          phone: '01234567890',
-          address: '123 Main St, Zone A',
-          bloodType: 'O+',
-          deviceId: 'DEVICE-OWNER-ID',
-        );
+
+        final deviceId = args?['deviceId'] ?? args?['currentDeviceId'];
+        
+        if (deviceId != null) {
+          user = await db.getUserProfile(deviceId.toString());
+        }
+        
+        // If no user found in database, create a default profile
+        if (user == null) {
+          final defaultDeviceId = deviceId?.toString() ?? 'DEVICE-OWNER-ID';
+          user = UserProfile(
+            name: 'Current User',
+            avatarLetter: 'C',
+            avatarColor: AppColors.connectionTeal,
+            status: 'Active',
+            email: '',
+            phone: '',
+            address: '',
+            bloodType: '',
+            deviceId: defaultDeviceId,
+          );
+        }
       } else {
-        // --- (Read-Only) ---
-        user = UserProfile(
-          name: args['name'] ?? 'Peer User',
-          avatarLetter: args['avatar'] ?? 'P',
-          avatarColor: args['color'] ?? Colors.grey,
-          status: args['status'] ?? 'Idle',
-          email: args['email'] ?? '',
-          phone: args['phone'] ?? '',
-          address: args['address'] ?? 'Unknown location',
-          bloodType: args['bloodType'] ?? 'N/A',
-          deviceId: args['deviceId'] ?? 'DEVICE-PEER-ID',
-        );
+      
+        final deviceId = args?['deviceId'];
+        
+        if (deviceId != null) {
+          user = await db.getUserProfile(deviceId.toString());
+        }
+        
+        if (user == null) {
+          final peerDeviceId = deviceId?.toString() ?? 'DEVICE-PEER-ID';
+          final name = args?['name']?.toString() ?? 'Peer User';
+          user = UserProfile(
+            name: name,
+            avatarLetter: args?['avatar']?.toString() ?? (name.isNotEmpty ? name[0].toUpperCase() : 'P'),
+            avatarColor: args?['color'] is Color 
+                ? args!['color'] as Color 
+                : (args?['color'] is String 
+                    ? _parseColorFromString(args!['color'] as String) 
+                    : Colors.grey),
+            status: args?['status']?.toString() ?? 'Idle',
+            email: args?['email']?.toString() ?? '',
+            phone: args?['phone']?.toString() ?? '',
+            address: args?['address']?.toString() ?? 'Unknown location',
+            bloodType: args?['bloodType']?.toString() ?? 'N/A',
+            deviceId: peerDeviceId,
+          );
+        }
       }
 
       emit(ProfileLoaded(profile: user, isEditable: isViewingSelf));
@@ -51,6 +74,18 @@ class ProfileCubit extends Cubit<ProfileState> {
     } catch (e) {
       emit(ProfileError('Failed to load profile: $e'));
     }
+  }
+
+  Color _parseColorFromString(String colorString) {
+    if (colorString.startsWith('#')) {
+      final hex = colorString.substring(1);
+      try {
+        final value = int.parse(hex, radix: 16);
+        if (hex.length == 6) return Color(0xFF000000 | value);
+        if (hex.length == 8) return Color(value);
+      } catch (_) {}
+    }
+    return Colors.grey;
   }
 
   
@@ -64,21 +99,24 @@ class ProfileCubit extends Cubit<ProfileState> {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
       
-      
-      final updatedProfile = currentState.profile.copyWith(
-        name: name,
-        email: email,
-        phone: phone,
-        address: address,
-        bloodType: bloodType,
-      );
-      
-      emit(currentState.copyWith(profile: updatedProfile));
-
-      // TODO: Implement actual database  (SQLite) 
-       
-      
-      //msln - Show success message via BlocListener - present the save operation succeeded
+      try {
+        final updatedProfile = currentState.profile.copyWith(
+          name: name,
+          email: email,
+          phone: phone,
+          address: address,
+          bloodType: bloodType,
+        );
+        
+        final db = DatabaseHelper.instance;
+        await db.saveUserProfile(updatedProfile);
+        
+        emit(currentState.copyWith(profile: updatedProfile));
+        
+        //msln - Show success message via BlocListener - present the save operation succeeded
+      } catch (e) {
+        emit(ProfileError('Failed to save profile: $e'));
+      }
     }
   }
 }
