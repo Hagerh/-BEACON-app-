@@ -100,7 +100,6 @@ Widget _buildNetworkCard(BuildContext context, List<Device> networks) {
       final device = networks[index];
       return GestureDetector(
         onTap: () {
-        
           Navigator.pushNamed(
             context,
             '/public_chat',
@@ -123,7 +122,6 @@ Widget _buildNetworkCard(BuildContext context, List<Device> networks) {
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            
                 Row(
                   children: [
                     const Icon(Icons.info, size: 16),
