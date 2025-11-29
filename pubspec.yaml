@@ -36,6 +36,7 @@ dependencies:
   bloc: ^9.1.0
   sqflite: ^2.2.8
   path: ^1.8.4
+  flutter_p2p_connection: ^3.0.3
   
 
 dev_dependencies:

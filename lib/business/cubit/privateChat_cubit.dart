@@ -1,37 +1,40 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/business/cubit/privateChat_state.dart';
+import 'package:projectdemo/services/p2p_service.dart';
 import 'package:projectdemo/data/model/message_model.dart';
-import 'package:projectdemo/data/local/database_helper.dart';
 
 class PrivateChatCubit extends Cubit<PrivateChatState> {
-  final int? networkId;
+  final P2PService p2pService;
+  StreamSubscription<Message>? _messageSubscription;
 
   PrivateChatCubit({
-    this.networkId,
-    required String name,
-    required String status,
+    required this.p2pService,
+    required String recipientName,
+    required String recipientDeviceId,
+    required String recipientStatus,
   }) : super(
-          PrivateChatState(
-            messages: [],
-            recipientName: name,
-            recipientStatus: status,
-          ),
-        ) {
-    // asynchronously load recent messages from local DB
-    Future.microtask(() => _loadInitialMessages());
+         PrivateChatState(
+           messages: [],
+           recipientName: recipientName,
+           recipientDeviceId: recipientDeviceId,
+           recipientStatus: recipientStatus,
+         ),
+       ) {
+    _startListeningToMessages();
   }
 
-  Future<void> _loadInitialMessages() async {
-    try {
-      final msgs = await DatabaseHelper.instance.fetchRecentMessages(
-        networkId: networkId,
-        limit: 50,
-      );
-      emit(state.copyWith(messages: msgs));
-    } catch (e) {
-      print('Failed to load messages: $e');
-    }
+  // Start listening to incoming messages from P2P service
+  void _startListeningToMessages() {
+    _messageSubscription = p2pService.messagesStream.listen(
+      (message) {
+        _receiveMessage(message);
+      },
+      onError: (error) {
+        print('Error receiving message: $error');
+      },
+    );
   }
 
   void sendMessage(String text) {
@@ -41,34 +44,56 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       text: text,
       isMine: true,
       time: TimeOfDay.now(),
-      isDelivered: false, // Start as not delivered
+      isDelivered: false, // Will be updated after sending
     );
 
     final updatedMessages = List<Message>.from(state.messages)..add(newMessage);
-    
+
     emit(state.copyWith(messages: updatedMessages));
 
+    // Send via P2P service
 
-    Future.delayed(const Duration(seconds: 1), () {
-      final deliveredMessage = newMessage.copyWith(isDelivered: true);
-      final index = updatedMessages.length - 1;
-      
-      // Replace the message with the delivered one
-      updatedMessages[index] = deliveredMessage;
-      
-      emit(state.copyWith(messages: updatedMessages));
-    });
+    try {
+      p2pService.sendPrivate(state.recipientDeviceId, text);
+
+      // Mark as delivered after a brief delay
+
+      Future.delayed(const Duration(milliseconds: 300), () {
+        final deliveredMessage = newMessage.copyWith(isDelivered: true);
+
+        final index = updatedMessages.length - 1;
+
+        if (index >= 0 && index < updatedMessages.length) {
+          updatedMessages[index] = deliveredMessage;
+
+          emit(state.copyWith(messages: List.from(updatedMessages)));
+        }
+      });
+    } catch (e) {
+      print('Failed to send message: $e');
+
+      // Optionally mark message as failed
+    }
+  }
+  // Receive a message from the P2P service
+
+  void _receiveMessage(Message message) {
+    final updatedMessages = List<Message>.from(state.messages)..add(message);
+    emit(state.copyWith(messages: updatedMessages));
   }
 
-  // a received message from the other user
-  void receiveMessage(String text) {
-    final receivedMessage = Message(
-      text: text,
-      isMine: false,
-      time: TimeOfDay.now(),
-      isDelivered: true,
-    );
-    final updatedMessages = List<Message>.from(state.messages)..add(receivedMessage);
-    emit(state.copyWith(messages: updatedMessages));
+  // Stop listening when closing the chat
+
+  void stopListening() {
+    _messageSubscription?.cancel();
+
+    _messageSubscription = null;
+  }
+
+  @override
+  Future<void> close() {
+    _messageSubscription?.cancel();
+
+    return super.close();
   }
 }
