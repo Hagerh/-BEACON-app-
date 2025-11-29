@@ -2,12 +2,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import '../model/device_model.dart';
 import '../model/deviceDetail_model.dart';
 import '../model/message_model.dart';
 import '../model/userProfile_model.dart';
+import '../../services/encryption_service.dart';
 
 class DatabaseHelper {
   // use singlton pattern
@@ -32,10 +33,15 @@ class DatabaseHelper {
       await Directory(dirname(path)).create(recursive: true);
     } catch (_) {} // in case the directory already exists.
 
+    // Get encryption key from secure storage
+    final encryptionKey = await EncryptionService.getEncryptionKey();
+
     final db = await openDatabase(
       path,
       version: 1,
-      onConfigure: (db) async {    // enable foreign keys
+      password: encryptionKey, // SQLCipher encryption key
+      onConfigure: (db) async {
+        // Enable foreign keys
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _createDB, // create tables if not exist
