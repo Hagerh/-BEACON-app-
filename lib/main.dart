@@ -117,7 +117,7 @@ class MyApp extends StatelessWidget {
               recipientStatus: status,
             ),
 
-            child: const PrivatechatScreen(),
+            child: PrivatechatScreen(),
           );
         },
 
