@@ -11,8 +11,34 @@ import 'package:projectdemo/presentation/widgets/info_summary.dart';
 import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 
-class PublicChatScreen extends StatelessWidget {
-  const PublicChatScreen({super.key});
+class PublicChatScreen extends StatefulWidget {
+  final String networkName;
+
+  const PublicChatScreen({
+    super.key,
+    required this.networkName,
+  });
+
+  @override
+  State<PublicChatScreen> createState() => _PublicChatScreenState();
+}
+
+class _PublicChatScreenState extends State<PublicChatScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Start listening to members stream
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NetworkDashboardCubit>().startListening(widget.networkName);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop listening when leaving
+    context.read<NetworkDashboardCubit>().stopListening();
+    super.dispose();
+  }
 
   void _showBroadcastDialog(BuildContext context) {
     final cubit = context.read<NetworkDashboardCubit>();
@@ -20,22 +46,25 @@ class PublicChatScreen extends StatelessWidget {
       context: context,
       builder: (_) => BroadcastDialog(
         onSend: (msg) {
-          cubit.broadcastMessage(msg); // Call Cubit action
-          final count =
-              (cubit.state as NetworkDashboardLoaded).connectedDevices.length;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Broadcast sent to $count devices'),
-              backgroundColor: AppColors.connectionTeal,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          cubit.broadcastMessage(msg);
+          final state = cubit.state;
+          if (state is NetworkDashboardLoaded) {
+            final count = state.connectedDevices.length;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Broadcast sent to $count devices'),
+                backgroundColor: AppColors.connectionTeal,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
         },
       ),
     );
   }
 
   void _showPredefinedMessages(BuildContext context, DeviceDetail device) {
+    final cubit = context.read<NetworkDashboardCubit>();
     final List<String> predefinedMessages = [
       '🆘 Need immediate help!',
       '📍 Share my location',
@@ -55,9 +84,10 @@ class PublicChatScreen extends StatelessWidget {
         device: {
           'name': device.name,
           'deviceId': device.deviceId,
-        }, // Convert back to map for the widget
+        },
         messages: predefinedMessages,
         onSend: (msg) {
+          cubit.sendPrivateMessage(device.deviceId, msg);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Sent "$msg" to ${device.name}'),
@@ -70,10 +100,10 @@ class PublicChatScreen extends StatelessWidget {
   }
 
   void _openPrivateChat(BuildContext context, DeviceDetail device) {
-    //  Tell the Cubit to mark unread count as 0
+    // Mark messages as read
     context.read<NetworkDashboardCubit>().markDeviceMessagesAsRead(
-      device.deviceId, 
-    );
+          device.deviceId,
+        );
 
     Navigator.pushNamed(
       context,
@@ -83,17 +113,26 @@ class PublicChatScreen extends StatelessWidget {
         'avatar': device.avatar,
         'color': device.color,
         'status': device.status,
+        'deviceId': device.deviceId,
       },
     );
   }
 
   void _showExitDialog(BuildContext context) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final state = cubit.state;
+    final isServer = state is NetworkDashboardLoaded ? state.isServer : false;
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Exit"),
-          content: const Text("Are you sure you want to exit?"),
+          title: Text(isServer ? "Stop Network" : "Leave Network"),
+          content: Text(
+            isServer
+                ? "Are you sure you want to stop the network? All users will be disconnected."
+                : "Are you sure you want to leave the network?",
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -102,15 +141,77 @@ class PublicChatScreen extends StatelessWidget {
               child: const Text("Cancel"),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                
+                if (isServer) {
+                  await cubit.stopNetwork();
+                } else {
+                  await cubit.leaveNetwork();
+                }
+                
+                // Navigate back to home
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
-              child: const Text("Exit"),
+              child: Text(
+                isServer ? "Stop" : "Leave",
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           ],
         );
       },
+    );
+  }
+
+  void _showDeviceOptions(BuildContext context, DeviceDetail device) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final state = cubit.state;
+    final isServer = state is NetworkDashboardLoaded ? state.isServer : false;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.chat),
+              title: const Text('Open Chat'),
+              onTap: () {
+                Navigator.pop(context);
+                _openPrivateChat(context, device);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flash_on),
+              title: const Text('Quick Send'),
+              onTap: () {
+                Navigator.pop(context);
+                _showPredefinedMessages(context, device);
+              },
+            ),
+            if (isServer)
+              ListTile(
+                leading: const Icon(Icons.remove_circle, color: Colors.red),
+                title: const Text('Kick User', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  cubit.kickUser(device.deviceId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${device.name} has been removed'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -122,7 +223,31 @@ class PublicChatScreen extends StatelessWidget {
         title: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
           builder: (context, state) {
             if (state is NetworkDashboardLoaded) {
-              return Text(state.networkName);
+              return Row(
+                children: [
+                  Text(state.networkName),
+                  const SizedBox(width: 8),
+                  if (state.isServer)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amber,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'HOST',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                ],
+              );
             } else if (state is NetworkDashboardLoading) {
               return Text(state.networkName);
             }
@@ -153,15 +278,34 @@ class PublicChatScreen extends StatelessWidget {
           onPressed: () => _showExitDialog(context),
         ),
       ),
-
       body: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
         builder: (context, state) {
-          if (state is NetworkDashboardLoading) {
+          if (state is NetworkDashboardInitial ||
+              state is NetworkDashboardLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (state is NetworkDashboardError) {
-            return Center(child: Text("Error: ${state.message}"));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error: ${state.message}",
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    child: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            );
           }
 
           if (state is NetworkDashboardLoaded) {
@@ -172,7 +316,6 @@ class PublicChatScreen extends StatelessWidget {
             return Column(
               children: [
                 InfoSummary(total: total, connected: connected),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
@@ -209,20 +352,24 @@ class PublicChatScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: devices.length,
-                    itemBuilder: (context, index) {
-                      final device = devices[index];
-                      return DeviceCard(
-                        device: device,
-                        onChat: () => _openPrivateChat(context, device),
-                        onQuickSend: () =>
-                            _showPredefinedMessages(context, device),
-                        onTap: () => _openPrivateChat(context, device),
-                      );
-                    },
-                  ),
+                  child: devices.isEmpty
+                      ? const Center(
+                          child: Text('Waiting for devices to join...'),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: devices.length,
+                          itemBuilder: (context, index) {
+                            final device = devices[index];
+                            return DeviceCard(
+                              device: device,
+                              onChat: () => _openPrivateChat(context, device),
+                              onQuickSend: () =>
+                                  _showPredefinedMessages(context, device),
+                              onTap: () => _showDeviceOptions(context, device),
+                            );
+                          },
+                        ),
                 ),
               ],
             );
