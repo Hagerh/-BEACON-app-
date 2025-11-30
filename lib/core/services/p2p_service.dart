@@ -54,8 +54,10 @@ class P2PService {
       // Listen for incoming packets
       _host!.streamReceivedTexts().listen(_handleIncomingPacket);
 
-      // Add server as first member in dashboard
-      _addMember(currentUser!.deviceId, currentUser!.name);
+      // Listen to client list changes (automatic member management)
+      _host!.streamClientList().listen((clients) {
+        _syncMembersFromClientList(clients);
+      });
     } catch (e) {
       debugPrint("Failed to create network: $e");
       rethrow;
@@ -64,7 +66,7 @@ class P2PService {
 
   Future<void> stopNetwork() async {
     if (isServer) await _host?.removeGroup();
-    disconnect(); //? broadcast shutdown?
+    disconnect();
   }
 
   // ---------------- CLIENT METHODS ------------------
@@ -89,8 +91,10 @@ class P2PService {
     // Connect to the server
     await _client!.connectWithDevice(device);
 
-    // Notify of joining
-    sendJoin();
+    // Listen to client list changes (automatic member management)
+    _client!.streamClientList().listen((clients) {
+      _syncMembersFromClientList(clients);
+    });
   }
 
   Future<void> startDiscovery() async {
@@ -114,7 +118,6 @@ class P2PService {
 
   Future<void> leaveNetwork() async {
     if (!isServer) {
-      sendLeave();
       disconnect();
     }
   }
@@ -137,7 +140,8 @@ class P2PService {
       "type": "broadcast",
       "from": currentUser!.deviceId,
       "to": "ALL",
-      "message": text, //? add senderName?
+      "message": text,
+      "senderName": currentUser!.name,
     });
   }
 
@@ -147,24 +151,7 @@ class P2PService {
       "from": currentUser!.deviceId,
       "to": receiverId,
       "message": text,
-    });
-  }
-
-  void sendJoin() {
-    _sendToAll({
-      "type": "join",
-      "from": currentUser!.deviceId,
-      "to": "ALL",
-      "message": currentUser!.name,
-    });
-  }
-
-  void sendLeave() {
-    _sendToAll({
-      "type": "leave",
-      "from": currentUser!.deviceId,
-      "to": "ALL",
-      "message": "left",
+      "senderName": currentUser!.name,
     });
   }
 
@@ -174,35 +161,6 @@ class P2PService {
       "from": currentUser!.deviceId,
       "to": userId,
       "message": "removed by server",
-    });
-  }
-
-  void sendMemberList(String clientId) {
-    _sendToOne(clientId, {
-      "type": "member_list",
-      "from": currentUser!.deviceId,
-      "to": clientId,
-      "members": _members
-          .map((m) => {"deviceId": m.deviceId, "name": m.name})
-          .toList(),
-    });
-  }
-
-  void broadcastMemberAdded(String deviceId, String name) {
-    _sendToAll({
-      "type": "member_added",
-      "from": currentUser!.deviceId,
-      "to": "ALL",
-      "message": ({"deviceId": deviceId, "name": name}),
-    });
-  }
-
-  void broadcastMemberRemoved(String deviceId) {
-    _sendToAll({
-      "type": "member_removed",
-      "from": currentUser!.deviceId,
-      "to": "ALL",
-      "message": deviceId,
     });
   }
 
@@ -231,124 +189,87 @@ class P2PService {
   // ---------------- RECEIVING PACKETS ------------------
 
   void _handleIncomingPacket(String raw) {
-    Map<String, dynamic> data = jsonDecode(raw);
+    try {
+      Map<String, dynamic> data = jsonDecode(raw);
 
-    switch (data["type"]) {
-      case "broadcast":
-        _messagesController.add(
-          Message(
-            text: data["message"],
-            isMine: false,
-            time: TimeOfDay.now(),
-            isDelivered: true,
-          ),
-        );
-        break;
-
-      case "private":
-        if (data["to"] == currentUser!.deviceId) {
+      switch (data["type"]) {
+        case "broadcast":
           _messagesController.add(
             Message(
               text: data["message"],
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
+              //senderName: data["senderName"],
             ),
           );
-        }
-        break;
+          break;
 
-      case "join":
-        if (isServer) {
-          String deviceId = data["from"];
-          String name = data["message"] ?? "Unknown";
-
-          // Check if network is full
-          if (_members.length >= _maxMembers!) {
-            _sendToOne(deviceId, {
-              "type": "network_full",
-              "from": currentUser!.deviceId,
-              "to": deviceId,
-              "message": "Network has reached maximum capacity",
-            });
-            return;
+        case "private":
+          if (data["to"] == currentUser!.deviceId) {
+            _messagesController.add(
+              Message(
+                text: data["message"],
+                isMine: false,
+                time: TimeOfDay.now(),
+                isDelivered: true,
+                //senderName: data["senderName"],
+              ),
+            );
           }
+          break;
 
-          _addMember(deviceId, name);
-
-          // Send full member list to NEW client only
-          sendMemberList(deviceId);
-
-          // Broadcast to ALL other clients that someone joined
-          broadcastMemberAdded(deviceId, name);
-        }
-        break;
-
-      case "leave":
-        if (isServer) {
-          String deviceId = data["from"];
-          _removeMember(deviceId);
-          broadcastMemberRemoved(deviceId);
-        }
-        break;
-
-      case "kick":
-        if (data["to"] == currentUser!.deviceId) {
-          disconnect();
-        }
-        break;
-
-      case "member_list":
-        if (!isServer) {
-          _members.clear();
-          for (var member in data["members"]) {
-            _addMember(member["deviceId"], member["name"]);
+        case "kick":
+          if (data["to"] == currentUser!.deviceId) {
+            disconnect();
           }
-        }
-        break;
+          break;
 
-      case "member_added":
-        if (!isServer) {
-          _addMember(data["deviceId"], data["name"]);
-        }
-        break;
-
-      case "member_removed":
-        if (!isServer) {
-          _removeMember(data["deviceId"]);
-        }
-        break;
-
-      case "network_full":
-        if (!isServer) {
-          // Handle network full - maybe show error to user
-          debugPrint("Cannot join: ${data["message"]}");
-          disconnect();
-        }
-        break;
+        case "network_full":
+          if (!isServer) {
+            // todo: Handle network full - maybe show error to user
+            debugPrint("Cannot join: ${data["message"]}");
+            disconnect();
+          }
+          break;
+      }
+    } catch (e) {
+      debugPrint("Error handling incoming packet: $e");
     }
   }
 
   // ---------------- MEMBERS MANAGEMENT ------------------
 
-  void _addMember(String deviceId, String name) {
-    _members.add(
-      DeviceDetail(
-        name: name,
-        deviceId: deviceId,
-        status: "Active",
-        unread: 0,
-        signalStrength: 100,
-        distance: '--',
-        avatar: name.isNotEmpty ? name[0] : '?',
-        color: Colors.green,
-      ),
-    );
-    _membersController.add(List.unmodifiable(_members));
-  }
+  void _syncMembersFromClientList(List<P2pClientInfo> clients) {
+    // Check if network is full (server only)
 
-  void _removeMember(String deviceId) {
-    _members.removeWhere((device) => device.deviceId == deviceId);
+    if (isServer && clients.length > _maxMembers!) {
+      debugPrint("Network full: ${clients.length}/$_maxMembers");
+
+      // todo: Send network full message to clients trying to join
+
+      return;
+    }
+
+    _members.clear();
+    
+    for (var client in clients) {
+      _members.add(
+        DeviceDetail(
+          name: client.username ?? 'Unknown',
+          deviceId: client.id,
+          status: "Active",
+          unread: 0,
+          signalStrength: 100,
+          distance: '--',
+          avatar: (client.username?.isNotEmpty ?? false)
+              ? client.username![0]
+              : '?',
+          color: client.isHost ? Colors.blue : Colors.green,
+        ),
+      );
+    }
+
     _membersController.add(List.unmodifiable(_members));
   }
 
@@ -376,7 +297,6 @@ class P2PService {
 
   // ---------------- DISPOSE ------------------
   void dispose() {
-    //TODO: call this on app shutdown
     // Close all controllers when app is shutting down
     if (!_discoveryController.isClosed) _discoveryController.close();
     if (!_membersController.isClosed) _membersController.close();

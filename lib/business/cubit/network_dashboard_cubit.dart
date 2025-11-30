@@ -41,7 +41,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     _membersSubscription = null;
   }
 
-  /// Mark messages from a device as read
+  // Mark messages from a device as read
   void markDeviceMessagesAsRead(String deviceId) {
     if (state is NetworkDashboardLoaded) {
       final currentState = state as NetworkDashboardLoaded;
@@ -71,7 +71,9 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   void kickUser(String deviceId) {
     try {
       p2pService.kickUser(deviceId);
-      // Member will be removed automatically via membersStream //?
+      // Member will be removed automatically removed via streamClientList
+      //?stopListening();
+      //todo: go back to discovery screen
     } catch (e) {
       emit(NetworkDashboardError('Failed to kick user: $e'));
     }
@@ -82,6 +84,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       await p2pService.leaveNetwork();
       stopListening();
+      //todo: go back to discovery screen
     } catch (e) {
       emit(NetworkDashboardError('Failed to leave network: $e'));
     }
@@ -92,6 +95,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       await p2pService.stopNetwork();
       stopListening();
+      //todo: go back to discovery screen
     } catch (e) {
       emit(NetworkDashboardError('Failed to stop network: $e'));
     }

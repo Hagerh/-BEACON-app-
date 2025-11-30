@@ -36,12 +36,16 @@ class NetworkCubit extends Cubit<NetworkState> {
   }
 
   Future<void> stopDiscovery() async {
-    // Stop discovery
-    await p2pService.stopDiscovery();
+    try {
+      // Stop discovery
+      await p2pService.stopDiscovery();
 
-    // Cancel subscription
-    await _discoverySubscription?.cancel();
-    _discoverySubscription = null;
+      // Cancel subscription
+      await _discoverySubscription?.cancel();
+      _discoverySubscription = null;
+    } catch (e) {
+      emit(NetworkError('Failed to stop discovery: $e'));
+    }
   }
 
   Future<void> connectToNetwork(BleDiscoveredDevice device) async {
