@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/core/constants/colors.dart';
 
 class InfoSummary extends StatelessWidget {
   final int total;

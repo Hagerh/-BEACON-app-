@@ -3,12 +3,14 @@
 // Handle network stop
 // Integrate with P2PService
 
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/cubit/createNetwork_state.dart';
-import 'package:projectdemo/data/model/connectUsers_model.dart';
-import 'package:projectdemo/services/p2p_service.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
 import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
+import 'package:projectdemo/data/models/connected_users_model.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/create_network_state.dart';
 
 // Handles P2P network creation and connected user management
 class CreateNetworkCubit extends Cubit<CreateNetworkState> {
@@ -22,7 +24,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   Future<void> startNetwork({
     required String networkName,
     required int maxConnections,
-    required UserProfile currentUser,
   }) async {
     // Input Validation: network name
     if (networkName.trim().isEmpty) {
@@ -54,6 +55,9 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     );
 
     try {
+      // Get current user profile from database
+      final currentUser = await _getCurrentUserProfile();
+
       // Generate unique network ID
       final networkId = _generateNetworkId();
 
@@ -208,6 +212,41 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
         emit(CreateNetworkInitial());
       }
     }
+  }
+
+  /// Gets the current user profile from database or creates a default one
+  ///
+  /// TODO: Device ID should come from P2P discovery or be stored persistently
+  /// in shared preferences to maintain the same ID across sessions
+  Future<UserProfile> _getCurrentUserProfile() async {
+    final db = DatabaseHelper.instance;
+
+    // TODO: Get device ID from P2P service when available
+    // For now, generate a temporary ID
+    final deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Try to load existing user profile from database
+    UserProfile? user = await db.getUserProfile(deviceId);
+
+    // If not found, create a default profile
+    if (user == null) {
+      user = UserProfile(
+        name: 'My Device',
+        deviceId: deviceId,
+        avatarLetter: 'M',
+        avatarColor: AppColors.connectionTeal,
+        status: 'Active',
+        email: '',
+        phone: '',
+        address: '',
+        bloodType: '',
+      );
+
+      // Save the new profile to database for future use
+      await db.saveUserProfile(user);
+    }
+
+    return user;
   }
 
   // Generates a unique network ID

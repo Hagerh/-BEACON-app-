@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 
-import '../data/model/deviceDetail_model.dart';
-import '../data/model/message_model.dart';
-import '../data/model/userProfile_model.dart';
+import 'package:projectdemo/data/models/device_detail_model.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/data/models/message_model.dart';
 
 class P2PService {
   FlutterP2pHost? _host;

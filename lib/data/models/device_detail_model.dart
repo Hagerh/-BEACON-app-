@@ -1,4 +1,3 @@
-
 import 'dart:ui';
 
 class DeviceDetail {
@@ -10,8 +9,7 @@ class DeviceDetail {
   final String distance;
   final String avatar;
   final Color color;
-  
-  
+
   DeviceDetail({
     required this.name,
     required this.deviceId,
@@ -46,35 +44,39 @@ class DeviceDetail {
       name: m['name']?.toString() ?? 'Unknown',
       deviceId: m['device_id']?.toString() ?? 'unknown',
       status: m['status']?.toString() ?? 'Idle',
-      unread: (m['unread'] is int) ? m['unread'] as int : int.tryParse(m['unread']?.toString() ?? '0') ?? 0,
-      signalStrength: (m['signal_strength'] is int) ? m['signal_strength'] as int : int.tryParse(m['signal_strength']?.toString() ?? '0') ?? 0,
+      unread: (m['unread'] is int)
+          ? m['unread'] as int
+          : int.tryParse(m['unread']?.toString() ?? '0') ?? 0,
+      signalStrength: (m['signal_strength'] is int)
+          ? m['signal_strength'] as int
+          : int.tryParse(m['signal_strength']?.toString() ?? '0') ?? 0,
       distance: m['distance']?.toString() ?? '--',
       avatar: m['avatar']?.toString() ?? '?',
       color: parseColor(m['color']),
     );
   }
 
-//to deal with individual device updates
+  //to deal with individual device updates
   DeviceDetail copyWith({
-  String? status,
-  int? unread,
-  int? signalStrength,
-  String? distance,
-}) {
-  return DeviceDetail(
-    name: name,
-    deviceId: deviceId,
-    status: status ?? this.status,
-    unread: unread ?? this.unread,
-    signalStrength: signalStrength ?? this.signalStrength,
-    distance: distance ?? this.distance,
-    avatar: avatar,
-    color: color,
-  );
-}
+    String? status,
+    int? unread,
+    int? signalStrength,
+    String? distance,
+  }) {
+    return DeviceDetail(
+      name: name,
+      deviceId: deviceId,
+      status: status ?? this.status,
+      unread: unread ?? this.unread,
+      signalStrength: signalStrength ?? this.signalStrength,
+      distance: distance ?? this.distance,
+      avatar: avatar,
+      color: color,
+    );
+  }
 
-  //so in the screen 
+  //so in the screen
   //-> final connected = devices
-        //.where((d) => d.status == 'Active')
-        // .length;
+  //.where((d) => d.status == 'Active')
+  // .length;
 }

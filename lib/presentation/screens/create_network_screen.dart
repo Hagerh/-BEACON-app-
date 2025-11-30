@@ -1,16 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/data/models/connected_users_model.dart';
+import 'package:projectdemo/business/cubit/create_network_cubit.dart';
+import 'package:projectdemo/business/cubit/create_network_state.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
-
-class ConnectedUser {
-  final String id;
-  final String name;
-  final String joinedAt;
-  final int maxConnections = 5;
-
-  ConnectedUser({required this.id, required this.name, required this.joinedAt});
-}
 
 class CreateNetworkScreen extends StatefulWidget {
   const CreateNetworkScreen({super.key});
@@ -23,17 +17,7 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
   final TextEditingController _networkNameController = TextEditingController();
   final TextEditingController _networkMaxConnectionsController =
       TextEditingController(text: '5');
-  bool _isNetworkActive = false; /////////
-  bool _isStarting = false;
-  List<ConnectedUser> _connectedUsers = [];
-  String _networkId = '';
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  /////////////////
   @override
   void dispose() {
     _networkNameController.dispose();
@@ -41,122 +25,110 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
     super.dispose();
   }
 
-  void _startNetwork() async {
-    if (_networkNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Enter a network name'),
-          backgroundColor: AppColors.alertRed,
-        ),
-      );
-      return;
-    }
+  void _startNetwork() {
+    final networkName = _networkNameController.text.trim();
+    final maxConnections =
+        int.tryParse(_networkMaxConnectionsController.text) ?? 5;
 
-    setState(() {
-      _isStarting = true;
-    });
-
-    // Simulate network initialization
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() {
-      _isStarting = false;
-      _isNetworkActive = true;
-      _networkId = 'BEACON-${DateTime.now().millisecondsSinceEpoch % 10000}';
-    });
-
-    // Start listening for connections (mock data for now)
-    _listenForConnections();
-  }
-
-  // TODO: Implement real peer connection service
-  void _listenForConnections() {
-    setState(() {
-      _connectedUsers.add(
-        ConnectedUser(
-          id: '${_connectedUsers.length + 1}',
-          name: 'Device ${_connectedUsers.length + 1}',
-          joinedAt: DateTime.now().toString(),
-        ),
-      );
-      _connectedUsers.add(
-        ConnectedUser(
-          id: '${_connectedUsers.length + 1}',
-          name: 'Device ${_connectedUsers.length + 1}',
-          joinedAt: DateTime.now().toString(),
-        ),
-      );
-    });
+    context.read<CreateNetworkCubit>().startNetwork(
+      networkName: networkName,
+      maxConnections: maxConnections,
+    );
   }
 
   void _stopNetwork() {
-    setState(() {
-      _isNetworkActive = false;
-      _connectedUsers.clear();
-      _networkId = '';
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Network stopped successfully'),
-        backgroundColor: AppColors.alertRed,
-      ),
-    );
+    context.read<CreateNetworkCubit>().stopNetwork();
   }
 
   void _disconnectUser(ConnectedUser user) {
-    setState(() {
-      _connectedUsers.remove(user);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${user.name} has been disconnected'),
-        backgroundColor: AppColors.alertRed,
-      ),
-    );
+    context.read<CreateNetworkCubit>().disconnectUser(user.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Create Network"),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(255, 235, 200, 200),
-                Color.fromARGB(255, 164, 236, 246),
-              ],
+    return BlocListener<CreateNetworkCubit, CreateNetworkState>(
+      listener: (context, state) {
+        // Handle error states
+        if (state is CreateNetworkError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: AppColors.alertRed,
+            ),
+          );
+          // Clear error after showing snackbar
+          context.read<CreateNetworkCubit>().clearError();
+        }
+
+        // Show success message when network starts
+        if (state is CreateNetworkActive && state.connectedUsers.length == 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Network "${state.networkName}" created successfully!',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
+        // Show message when network stops
+        if (state is CreateNetworkInitial) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Network stopped successfully'),
+              backgroundColor: AppColors.alertRed,
+            ),
+          );
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Create Network"),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.fromARGB(255, 235, 200, 200),
+                  Color.fromARGB(255, 164, 236, 246),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (!_isNetworkActive) ...[
-                _buildNetworkSetupCard(),
-                const SizedBox(height: 16),
-                _buildStartButton(),
-              ] else ...[
-                _buildNetworkInfoCard(),
-                const SizedBox(height: 16),
-                _buildConnectedUsers(),
-                const SizedBox(height: 16),
-                _buildStopButton(),
-              ],
-            ],
-          ),
+        body: BlocBuilder<CreateNetworkCubit, CreateNetworkState>(
+          builder: (context, state) {
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (state is CreateNetworkInitial) ...[
+                      _buildNetworkSetupCard(),
+                      const SizedBox(height: 16),
+                      _buildStartButton(false),
+                    ] else if (state is CreateNetworkStarting) ...[
+                      _buildNetworkSetupCard(),
+                      const SizedBox(height: 16),
+                      _buildStartButton(true),
+                    ] else if (state is CreateNetworkActive) ...[
+                      _buildNetworkInfoCard(state),
+                      const SizedBox(height: 16),
+                      _buildConnectedUsers(state.connectedUsers),
+                      const SizedBox(height: 16),
+                      _buildStopButton(),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
         ),
+        floatingActionButton: const VoiceWidget(),
       ),
-      floatingActionButton: const VoiceWidget(),
     );
   }
 
@@ -272,15 +244,15 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
     );
   }
 
-  Widget _buildStartButton() {
+  Widget _buildStartButton(bool isStarting) {
     return ElevatedButton(
-      onPressed: _isStarting ? null : _startNetwork,
+      onPressed: isStarting ? null : _startNetwork,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.alertRed,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      child: _isStarting
+      child: isStarting
           ? Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -310,7 +282,7 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
     );
   }
 
-  Widget _buildNetworkInfoCard() {
+  Widget _buildNetworkInfoCard(CreateNetworkActive state) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -342,18 +314,14 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            _buildInfoRow(
-              Icons.label,
-              'Network Name',
-              _networkNameController.text,
-            ),
+            _buildInfoRow(Icons.label, 'Network Name', state.networkName),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.tag, 'Network ID', _networkId),
+            _buildInfoRow(Icons.tag, 'Network ID', state.networkId),
             const SizedBox(height: 16),
             _buildInfoRow(
               Icons.people,
               'Connected Users',
-              '${_connectedUsers.length} / ${_networkMaxConnectionsController.text}',
+              '${state.connectedUsers.length} / ${state.maxConnections}',
             ),
             const SizedBox(height: 12),
             _buildInfoRow(
@@ -395,7 +363,7 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
     );
   }
 
-  Widget _buildConnectedUsers() {
+  Widget _buildConnectedUsers(List<ConnectedUser> connectedUsers) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -408,7 +376,7 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _connectedUsers.isEmpty
+        connectedUsers.isEmpty
             ? Card(
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
@@ -444,9 +412,9 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
             : ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: _connectedUsers.length,
+                itemCount: connectedUsers.length,
                 itemBuilder: (context, index) {
-                  final user = _connectedUsers[index];
+                  final user = connectedUsers[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
@@ -476,7 +444,7 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
                             children: [
                               Icon(Icons.access_time, size: 14),
                               const SizedBox(width: 4),
-                              Text('Joined: ${user.joinedAt}'),
+                              Text('Joined: ${user.formattedJoinTime}'),
                             ],
                           ),
                         ],
@@ -516,12 +484,17 @@ class _CreateNetworkScreenState extends State<CreateNetworkScreen> {
   }
 
   void _showStopAlert() {
+    final state = context.read<CreateNetworkCubit>().state;
+    final userCount = state is CreateNetworkActive
+        ? state.connectedUsers.length
+        : 0;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Stop Network?'),
         content: Text(
-          'Are you sure you want to stop the network? All ${_connectedUsers.length} connected users will be disconnected.',
+          'Are you sure you want to stop the network? All $userCount connected users will be disconnected.',
         ),
         actions: [
           TextButton(

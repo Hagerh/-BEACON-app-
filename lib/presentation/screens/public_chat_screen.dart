@@ -1,0 +1,400 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/data/models/device_detail_model.dart';
+import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
+import 'package:projectdemo/presentation/routes/app_routes.dart';
+import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/presentation/widgets/device_card.dart';
+import 'package:projectdemo/presentation/widgets/info_summary.dart';
+import 'package:projectdemo/presentation/widgets/quick_message.dart';
+import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
+
+class PublicChatScreen extends StatefulWidget {
+  final String networkName;
+
+  const PublicChatScreen({
+    super.key,
+    required this.networkName,
+  });
+
+  @override
+  State<PublicChatScreen> createState() => _PublicChatScreenState();
+}
+
+class _PublicChatScreenState extends State<PublicChatScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Start listening to members stream
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NetworkDashboardCubit>().startListening(widget.networkName);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop listening when leaving
+    context.read<NetworkDashboardCubit>().stopListening();
+    super.dispose();
+  }
+
+  void _showBroadcastDialog(BuildContext context) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    showDialog(
+      context: context,
+      builder: (_) => BroadcastDialog(
+        onSend: (msg) {
+          cubit.broadcastMessage(msg);
+          final state = cubit.state;
+          if (state is NetworkDashboardLoaded) {
+            final count = state.connectedDevices.length;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Broadcast sent to $count devices'),
+                backgroundColor: AppColors.connectionTeal,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  void _showPredefinedMessages(BuildContext context, DeviceDetail device) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final List<String> predefinedMessages = [
+      '🆘 Need immediate help!',
+      '📍 Share my location',
+      '⚠️ Emergency situation',
+      '🏥 Medical assistance needed',
+      '🔥 Fire emergency',
+      '👮 Security alert',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.secondaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => QuickMessageSheet(
+        device: {
+          'name': device.name,
+          'deviceId': device.deviceId,
+        },
+        messages: predefinedMessages,
+        onSend: (msg) {
+          cubit.sendPrivateMessage(device.deviceId, msg);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sent "$msg" to ${device.name}'),
+              backgroundColor: AppColors.connectionTeal,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openPrivateChat(BuildContext context, DeviceDetail device) {
+    // Mark messages as read
+    context.read<NetworkDashboardCubit>().markDeviceMessagesAsRead(
+          device.deviceId,
+        );
+
+    Navigator.pushNamed(
+      context,
+      chatScreen,
+      arguments: {
+        'name': device.name,
+        'avatar': device.avatar,
+        'color': device.color,
+        'status': device.status,
+        'deviceId': device.deviceId,
+      },
+    );
+  }
+
+  void _showExitDialog(BuildContext context) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final state = cubit.state;
+    final isServer = state is NetworkDashboardLoaded ? state.isServer : false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isServer ? "Stop Network" : "Leave Network"),
+          content: Text(
+            isServer
+                ? "Are you sure you want to stop the network? All users will be disconnected."
+                : "Are you sure you want to leave the network?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                
+                if (isServer) {
+                  await cubit.stopNetwork();
+                } else {
+                  await cubit.leaveNetwork();
+                }
+                
+                // Navigate back to home
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              },
+              child: Text(
+                isServer ? "Stop" : "Leave",
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeviceOptions(BuildContext context, DeviceDetail device) {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final state = cubit.state;
+    final isServer = state is NetworkDashboardLoaded ? state.isServer : false;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.chat),
+              title: const Text('Open Chat'),
+              onTap: () {
+                Navigator.pop(context);
+                _openPrivateChat(context, device);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flash_on),
+              title: const Text('Quick Send'),
+              onTap: () {
+                Navigator.pop(context);
+                _showPredefinedMessages(context, device);
+              },
+            ),
+            if (isServer)
+              ListTile(
+                leading: const Icon(Icons.remove_circle, color: Colors.red),
+                title: const Text('Kick User', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  cubit.kickUser(device.deviceId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${device.name} has been removed'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+          builder: (context, state) {
+            if (state is NetworkDashboardLoaded) {
+              return Row(
+                children: [
+                  Text(state.networkName),
+                  const SizedBox(width: 8),
+                  if (state.isServer)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.amber,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'HOST',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            } else if (state is NetworkDashboardLoading) {
+              return Text(state.networkName);
+            }
+            return const Text('Network Dashboard');
+          },
+        ),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.fromARGB(255, 235, 200, 200),
+                Color.fromARGB(255, 164, 236, 246),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.campaign),
+            tooltip: 'Broadcast',
+            onPressed: () => _showBroadcastDialog(context),
+          ),
+        ],
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => _showExitDialog(context),
+        ),
+      ),
+      body: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+        builder: (context, state) {
+          if (state is NetworkDashboardInitial ||
+              state is NetworkDashboardLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is NetworkDashboardError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Error: ${state.message}",
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                    child: const Text('Go Home'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (state is NetworkDashboardLoaded) {
+            final devices = state.connectedDevices;
+            final total = devices.length;
+            final connected = devices.where((d) => d.status == 'Active').length;
+
+            return Column(
+              children: [
+                InfoSummary(total: total, connected: connected),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Connected Devices',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.connectionTeal,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$total',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: devices.isEmpty
+                      ? const Center(
+                          child: Text('Waiting for devices to join...'),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: devices.length,
+                          itemBuilder: (context, index) {
+                            final device = devices[index];
+                            return DeviceCard(
+                              device: device,
+                              onChat: () => _openPrivateChat(context, device),
+                              onQuickSend: () =>
+                                  _showPredefinedMessages(context, device),
+                              onTap: () => _showDeviceOptions(context, device),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.pushNamed(context, "/resources");
+            },
+            backgroundColor: AppColors.buttonPrimary,
+            heroTag: 'resourcesBtn',
+            child: const Icon(
+              Icons.folder_shared,
+              color: AppColors.primaryBackground,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const VoiceWidget(),
+        ],
+      ),
+    );
+  }
+}

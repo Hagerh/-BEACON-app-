@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
-import 'package:projectdemo/business/cubit/network_state.dart';
-import 'package:projectdemo/services/p2p_service.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/network_discovery_state.dart';
 
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/cubit/privateChat_state.dart';
-import 'package:projectdemo/services/p2p_service.dart';
-import 'package:projectdemo/data/model/message_model.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/business/cubit/private_chat_state.dart';
 
 class PrivateChatCubit extends Cubit<PrivateChatState> {
   final P2PService p2pService;

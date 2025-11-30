@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
-import 'package:projectdemo/business/cubit/userProfile_state.dart';
+import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/user_profile_state.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit() : super(ProfileLoading());
@@ -11,20 +11,19 @@ class ProfileCubit extends Cubit<ProfileState> {
   Future<void> loadProfile(Map<String, dynamic>? args) async {
     emit(ProfileLoading());
 
-    final bool isViewingSelf = args == null || args['isSelf'] == true; 
+    final bool isViewingSelf = args == null || args['isSelf'] == true;
 
     try {
       final db = DatabaseHelper.instance;
       UserProfile? user;
-      
-      if (isViewingSelf) {
 
+      if (isViewingSelf) {
         final deviceId = args?['deviceId'] ?? args?['currentDeviceId'];
-        
+
         if (deviceId != null) {
           user = await db.getUserProfile(deviceId.toString());
         }
-        
+
         // If no user found in database, create a default profile
         if (user == null) {
           final defaultDeviceId = deviceId?.toString() ?? 'DEVICE-OWNER-ID';
@@ -41,24 +40,25 @@ class ProfileCubit extends Cubit<ProfileState> {
           );
         }
       } else {
-      
         final deviceId = args?['deviceId'];
-        
+
         if (deviceId != null) {
           user = await db.getUserProfile(deviceId.toString());
         }
-        
+
         if (user == null) {
           final peerDeviceId = deviceId?.toString() ?? 'DEVICE-PEER-ID';
           final name = args?['name']?.toString() ?? 'Peer User';
           user = UserProfile(
             name: name,
-            avatarLetter: args?['avatar']?.toString() ?? (name.isNotEmpty ? name[0].toUpperCase() : 'P'),
-            avatarColor: args?['color'] is Color 
-                ? args!['color'] as Color 
-                : (args?['color'] is String 
-                    ? _parseColorFromString(args!['color'] as String) 
-                    : Colors.grey),
+            avatarLetter:
+                args?['avatar']?.toString() ??
+                (name.isNotEmpty ? name[0].toUpperCase() : 'P'),
+            avatarColor: args?['color'] is Color
+                ? args!['color'] as Color
+                : (args?['color'] is String
+                      ? _parseColorFromString(args!['color'] as String)
+                      : Colors.grey),
             status: args?['status']?.toString() ?? 'Idle',
             email: args?['email']?.toString() ?? '',
             phone: args?['phone']?.toString() ?? '',
@@ -70,7 +70,6 @@ class ProfileCubit extends Cubit<ProfileState> {
       }
 
       emit(ProfileLoaded(profile: user, isEditable: isViewingSelf));
-
     } catch (e) {
       emit(ProfileError('Failed to load profile: $e'));
     }
@@ -88,7 +87,6 @@ class ProfileCubit extends Cubit<ProfileState> {
     return Colors.grey;
   }
 
-  
   Future<void> saveProfile({
     required String name,
     required String email,
@@ -98,7 +96,7 @@ class ProfileCubit extends Cubit<ProfileState> {
   }) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
-      
+
       try {
         final updatedProfile = currentState.profile.copyWith(
           name: name,
@@ -107,12 +105,12 @@ class ProfileCubit extends Cubit<ProfileState> {
           address: address,
           bloodType: bloodType,
         );
-        
+
         final db = DatabaseHelper.instance;
         await db.saveUserProfile(updatedProfile);
-        
+
         emit(currentState.copyWith(profile: updatedProfile));
-        
+
         //msln - Show success message via BlocListener - present the save operation succeeded
       } catch (e) {
         emit(ProfileError('Failed to save profile: $e'));

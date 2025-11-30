@@ -1,7 +1,6 @@
-
 class Device {
   final String id;
-  final String status; 
+  final String status;
   final String lastSeen;
   final int connectors;
 
@@ -14,14 +13,15 @@ class Device {
 
   factory Device.fromMap(Map<String, dynamic> m) {
     return Device(
-      id: m['id']?.toString()
-          ?? (m['device_id']?.toString())
-          ?? (m['network_name']?.toString())
-          ?? '',
-      status: m['status']?.toString()
-          ?? m['host_status']?.toString()
-          ?? 'Unknown',
-      lastSeen: m['last_seen_at']?.toString() ?? (m['lastSeen']?.toString() ?? ''),
+      id:
+          m['id']?.toString() ??
+          (m['device_id']?.toString()) ??
+          (m['network_name']?.toString()) ??
+          '',
+      status:
+          m['status']?.toString() ?? m['host_status']?.toString() ?? 'Unknown',
+      lastSeen:
+          m['last_seen_at']?.toString() ?? (m['lastSeen']?.toString() ?? ''),
       connectors: (m['connectors'] is int)
           ? m['connectors'] as int
           : int.tryParse(m['connectors']?.toString() ?? '0') ?? 0,

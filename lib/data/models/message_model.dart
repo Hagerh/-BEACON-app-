@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class Message {
@@ -13,7 +12,6 @@ class Message {
     required this.time,
     required this.isDelivered,
   });
-
 
   Message copyWith({bool? isDelivered}) {
     return Message(
@@ -32,8 +30,12 @@ class Message {
         time = TimeOfDay(hour: dt.hour, minute: dt.minute);
       } catch (_) {}
     }
-    final isMine = (m['is_mine'] is int) ? (m['is_mine'] as int) == 1 : m['is_mine'] == true;
-    final isDelivered = (m['is_delivered'] is int) ? (m['is_delivered'] as int) == 1 : m['is_delivered'] == true;
+    final isMine = (m['is_mine'] is int)
+        ? (m['is_mine'] as int) == 1
+        : m['is_mine'] == true;
+    final isDelivered = (m['is_delivered'] is int)
+        ? (m['is_delivered'] as int) == 1
+        : m['is_delivered'] == true;
     return Message(
       text: m['message_content']?.toString() ?? '',
       isMine: isMine,

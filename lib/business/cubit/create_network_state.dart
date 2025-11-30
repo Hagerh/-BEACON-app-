@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/data/model/connectUsers_model.dart';
+import 'package:projectdemo/data/models/connected_users_model.dart';
 
 @immutable
 abstract class CreateNetworkState {}

@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
-import 'package:projectdemo/business/cubit/network_cubit.dart';
-import 'package:projectdemo/business/cubit/network_state.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/network_discovery_cubit.dart';
+import 'package:projectdemo/business/cubit/network_discovery_state.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
 class Joinnetworkscreen extends StatefulWidget {
   final UserProfile currentUser;
 
-  const Joinnetworkscreen({
-    super.key,
-    required this.currentUser,
-  });
+  const Joinnetworkscreen({super.key, required this.currentUser});
 
   @override
   State<Joinnetworkscreen> createState() => _JoinnetworkscreenState();
@@ -34,8 +31,6 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
     context.read<NetworkCubit>().stopDiscovery();
     super.dispose();
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -70,10 +65,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                 const SizedBox(width: 12),
                 const Text(
                   "Scanning for nearby networks...",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -86,9 +78,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                   Navigator.pushReplacementNamed(
                     context,
                     '/dashboard',
-                    arguments: {
-                      'device': state.device,
-                    },
+                    arguments: {'device': state.device},
                   );
                 } else if (state is NetworkError) {
                   // Show error message
@@ -210,18 +200,11 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                 color: Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                Icons.wifi,
-                color: Colors.blue,
-                size: 28,
-              ),
+              child: const Icon(Icons.wifi, color: Colors.blue, size: 28),
             ),
             title: Text(
               device.deviceName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,8 +223,11 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    const Icon(Icons.signal_cellular_alt,
-                        size: 14, color: Colors.grey),
+                    const Icon(
+                      Icons.signal_cellular_alt,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
                     const SizedBox(width: 4),
                     const Text(
                       "Available",
