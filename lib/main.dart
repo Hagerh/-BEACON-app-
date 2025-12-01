@@ -15,6 +15,7 @@ import 'package:projectdemo/presentation/screens/public_chat_screen.dart';
 import 'package:projectdemo/presentation/screens/private_chat_screen.dart';
 import 'package:projectdemo/presentation/screens/join_networks_screen.dart';
 import 'package:projectdemo/presentation/screens/create_network_screen.dart';
+import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
 import 'package:projectdemo/presentation/screens/resource_sharing_screen.dart';
 
 void main() {
@@ -71,6 +72,12 @@ class MyApp extends StatelessWidget {
           return BlocProvider(
             create: (context) => CreateNetworkCubit(p2pService: p2pService),
             child: const CreateNetworkScreen(),
+          );
+        },
+        networkSettingsScreen: (context) {
+          return BlocProvider(
+            create: (context) => CreateNetworkCubit(p2pService: p2pService),
+            child: const NetworkSettingsScreen(),
           );
         },
         profileScreen: (context) {
