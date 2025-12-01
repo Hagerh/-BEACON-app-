@@ -11,7 +11,7 @@ class P2PService {
   FlutterP2pHost? _host;
   FlutterP2pClient? _client;
 
-  bool isServer = false;
+  bool isHost = false;
   UserProfile? currentUser;
   int? _maxMembers;
   bool isScanning = false;
@@ -35,7 +35,7 @@ class P2PService {
   
   Future<void> initializeServer(UserProfile me) async {
     try {
-      isServer = true;
+      isHost = true;
       currentUser = me;
 
       // Initialize P2P host
@@ -69,14 +69,14 @@ class P2PService {
   }
 
   Future<void> stopNetwork() async {
-    if (isServer) await _host?.removeGroup();
+    if (isHost) await _host?.removeGroup();
     disconnect();
   }
 
   // ---------------- CLIENT METHODS ------------------
 
   Future<void> initializeClient(UserProfile me) async {
-    isServer = false;
+    isHost = false;
     currentUser = me;
 
     // Initialize P2P client
@@ -121,7 +121,7 @@ class P2PService {
   }
 
   Future<void> leaveNetwork() async {
-    if (!isServer) {
+    if (!isHost) {
       disconnect();
     }
   }
@@ -173,7 +173,7 @@ class P2PService {
   void _sendToAll(Map pkt) {
     final json = jsonEncode(pkt);
 
-    if (isServer) {
+    if (isHost) {
       _host?.broadcastText(json);
     } else {
       _client?.broadcastText(json);
@@ -183,7 +183,7 @@ class P2PService {
   void _sendToOne(String clientId, Map pkt) {
     final json = jsonEncode(pkt);
 
-    if (isServer) {
+    if (isHost) {
       _host?.sendTextToClient(json, clientId);
     } else {
       _client?.sendTextToClient(json, clientId);
@@ -230,7 +230,7 @@ class P2PService {
           break;
 
         case "network_full":
-          if (!isServer) {
+          if (!isHost) {
             // todo: Handle network full - maybe show error to user
             debugPrint("Cannot join: ${data["message"]}");
             disconnect();
@@ -247,7 +247,7 @@ class P2PService {
   void _syncMembersFromClientList(List<P2pClientInfo> clients) {
     // Check if network is full (server only)
 
-    if (isServer && clients.length > _maxMembers!) {
+    if (isHost && clients.length > _maxMembers!) {
       debugPrint("Network full: ${clients.length}/$_maxMembers");
 
       // todo: Send network full message to clients trying to join
@@ -293,7 +293,7 @@ class P2PService {
     // Reset ALL state
     _host = null;
     _client = null;
-    isServer = false;
+    isHost = false;
     currentUser = null;
     _maxMembers = null;
     isScanning = false;
