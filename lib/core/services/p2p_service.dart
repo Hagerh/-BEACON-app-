@@ -32,24 +32,16 @@ class P2PService {
   Stream<Message> get messagesStream => _messagesController.stream;
 
   // ---------------- SERVER METHODS ------------------
-
-  Future<void> createNetwork({
-    required UserProfile me,
-    required String name,
-    required int max,
-  }) async {
+  
+  Future<void> initializeServer(UserProfile me) async {
     try {
       isServer = true;
       currentUser = me;
-      _maxMembers = max;
 
       // Initialize P2P host
       _host = FlutterP2pHost();
       await _host!.initialize();
       await _checkPermissions(_host!);
-
-      // Create P2P group
-      await _host!.createGroup(advertise: true);
 
       // Listen for incoming packets
       _host!.streamReceivedTexts().listen(_handleIncomingPacket);
@@ -58,6 +50,18 @@ class P2PService {
       _host!.streamClientList().listen((clients) {
         _syncMembersFromClientList(clients);
       });
+    } catch (e) {
+      debugPrint("Failed to initialize server: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> createNetwork({required String name, required int max}) async {
+    try {
+      _maxMembers = max;
+
+      // Create P2P group
+      await _host!.createGroup(advertise: true);
     } catch (e) {
       debugPrint("Failed to create network: $e");
       rethrow;
@@ -252,7 +256,7 @@ class P2PService {
     }
 
     _members.clear();
-    
+
     for (var client in clients) {
       _members.add(
         DeviceDetail(

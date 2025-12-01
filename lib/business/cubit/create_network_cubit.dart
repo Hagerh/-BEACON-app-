@@ -63,11 +63,9 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
       // Create P2P network
       if (_p2pService != null) {
-        await _p2pService.createNetwork(
-          me: currentUser,
-          name: networkName,
-          max: maxConnections,
-        );
+        await _p2pService.initializeServer(currentUser);
+
+        await _p2pService.createNetwork(name: networkName, max: maxConnections);
 
         // Listen for member joins / leaves
         _memberSubscription = _p2pService.membersStream.listen(
