@@ -32,7 +32,7 @@ class P2PService {
   Stream<Message> get messagesStream => _messagesController.stream;
 
   // ---------------- SERVER METHODS ------------------
-  
+
   Future<void> initializeServer(UserProfile me) async {
     try {
       isHost = true;
