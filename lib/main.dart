@@ -17,6 +17,7 @@ import 'package:projectdemo/presentation/screens/join_networks_screen.dart';
 import 'package:projectdemo/presentation/screens/create_network_screen.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
 import 'package:projectdemo/presentation/screens/resource_sharing_screen.dart';
+import 'package:projectdemo/presentation/screens/splash_screen.dart'; 
 
 void main() {
   runApp(MyApp());
@@ -44,10 +45,11 @@ class MyApp extends StatelessWidget {
           onSurface: AppColors.textSecondary,
         ),
       ),
-      initialRoute: '/',
+      initialRoute: splashScreen, 
       routes: {
-        landingScreen: (context) => LandingScreen(),
-
+        splashScreen: (context) => const SplashScreen(), 
+        landingScreen: (context) => const LandingScreen(), 
+        
         networkScreen: (context) {
           // TODO: Get actual current user from your auth/storage
           final currentUser = UserProfile(
@@ -64,7 +66,6 @@ class MyApp extends StatelessWidget {
 
           return BlocProvider(
             create: (context) => NetworkCubit(p2pService: p2pService),
-
             child: Joinnetworkscreen(currentUser: currentUser),
           );
         },
@@ -81,57 +82,41 @@ class MyApp extends StatelessWidget {
           );
         },
         profileScreen: (context) {
-          // Arguments are passed when viewing a peer profile (from PrivateChatScreen)
-          final args =
-              ModalRoute.of(context)?.settings.arguments
-                  as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
 
           return BlocProvider(
-            // Pass arguments to the Cubit so it knows which profile to load
             create: (context) => ProfileCubit()..loadProfile(args),
             child: const ProfileScreen(),
           );
         },
-
         publicChatScreen: (context) {
-          //Extract arguments passed from Joinnetworkscreen
-          final networkData =
-              ModalRoute.of(context)?.settings.arguments
-                  as Map<String, dynamic>?;
-
+          final networkData = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           final networkName = networkData?['networkName'] ?? 'Unknown Network';
 
           return BlocProvider(
-        
             create: (context) => NetworkDashboardCubit(p2pService: p2pService),
             child: PublicChatScreen(networkName: networkName),
           );
         },
         chatScreen: (context) {
-          //Extract arguments passed from PublicChatScreen
-          final deviceInfo =
-              ModalRoute.of(context)?.settings.arguments
-                  as Map<String, dynamic>?;
+          final deviceInfo = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           final name = deviceInfo?['name'] ?? 'User';
           final status = deviceInfo?['status'] ?? 'Online';
           final deviceId = deviceInfo?['deviceId'] ?? 'UnknownID';
 
           return BlocProvider(
-            // Pass  initial data to the Cubit's constructor
             create: (context) => PrivateChatCubit(
               p2pService: p2pService,
-
               recipientName: name,
-
               recipientDeviceId: deviceId,
-
               recipientStatus: status,
             ),
-
             child: PrivatechatScreen(),
           );
         },
-
         resourceScreen: (context) => ResourceSharingScreen(),
       },
     );

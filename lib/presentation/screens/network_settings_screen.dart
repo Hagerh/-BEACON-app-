@@ -147,7 +147,7 @@ class NetworkSettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildInfoRow(Icons.label, 'Network Name', state.networkName),
             const SizedBox(height: 16),
-            _buildInfoRow(Icons.tag, 'Network ID', state.networkId),
+            _buildInfoRow(Icons.tag, 'Network ID', state.networkName), // .networkId to .networkName
             const SizedBox(height: 16),
             _buildInfoRow(
               Icons.people,

@@ -33,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
                   icon: const Icon(Icons.home_outlined),
                   tooltip: 'Home',
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/");
+                    Navigator.pushReplacementNamed(context, "/landing");
                   },
                 ),
               ],
