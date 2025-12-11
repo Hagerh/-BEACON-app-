@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:projectdemo/data/model/message_model.dart';
+import 'package:projectdemo/data/models/message_model.dart';
 
 @immutable
 class PrivateChatState {

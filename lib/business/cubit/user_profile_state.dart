@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
 
 @immutable
 abstract class ProfileState {}

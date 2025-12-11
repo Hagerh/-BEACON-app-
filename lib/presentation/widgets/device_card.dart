@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/data/model/deviceDetail_model.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/data/models/device_detail_model.dart';
 
 class DeviceCard extends StatelessWidget {
   final DeviceDetail device;

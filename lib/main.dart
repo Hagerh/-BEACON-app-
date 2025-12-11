@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/cubit/networkDashboard_cubit.dart';
-import 'package:projectdemo/business/cubit/network_cubit.dart';
-import 'package:projectdemo/business/cubit/privateChat_cubit.dart';
-import 'package:projectdemo/business/cubit/userProfile_cubit.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/presentation/screens/privateChat_screen.dart';
-import 'package:projectdemo/presentation/screens/createNetwork_screen.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/private_chat_cubit.dart';
+import 'package:projectdemo/business/cubit/user_profile_cubit.dart';
+import 'package:projectdemo/business/cubit/create_network_cubit.dart';
+import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/network_discovery_cubit.dart';
+import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
-import 'package:projectdemo/presentation/screens/joinNetworks_screen.dart';
-import 'package:projectdemo/presentation/screens/publicChat_screen.dart';
-
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
-import 'package:projectdemo/constants/settings.dart';
-import 'package:projectdemo/presentation/screens/resourceSharing_screen.dart';
-
-import 'package:projectdemo/services/p2p_service.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
+import 'package:projectdemo/presentation/screens/public_chat_screen.dart';
+import 'package:projectdemo/presentation/screens/private_chat_screen.dart';
+import 'package:projectdemo/presentation/screens/join_networks_screen.dart';
+import 'package:projectdemo/presentation/screens/create_network_screen.dart';
+import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
+import 'package:projectdemo/presentation/screens/resource_sharing_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -68,7 +68,18 @@ class MyApp extends StatelessWidget {
             child: Joinnetworkscreen(currentUser: currentUser),
           );
         },
-        createNetworkScreen: (context) => CreateNetworkScreen(),
+        createNetworkScreen: (context) {
+          return BlocProvider(
+            create: (context) => CreateNetworkCubit(p2pService: p2pService),
+            child: const CreateNetworkScreen(),
+          );
+        },
+        networkSettingsScreen: (context) {
+          return BlocProvider(
+            create: (context) => CreateNetworkCubit(p2pService: p2pService),
+            child: const NetworkSettingsScreen(),
+          );
+        },
         profileScreen: (context) {
           // Arguments are passed when viewing a peer profile (from PrivateChatScreen)
           final args =

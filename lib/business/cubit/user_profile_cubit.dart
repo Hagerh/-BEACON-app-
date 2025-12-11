@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
-import 'package:projectdemo/business/cubit/userProfile_state.dart';
+import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/user_profile_state.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
   ProfileCubit() : super(ProfileLoading());

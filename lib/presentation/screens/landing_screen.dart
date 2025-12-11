@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../widgets/beaconLogo_widget.dart';
+
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/presentation/widgets/beaconLogo_widget.dart';
+
 import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
-import '../widgets/homeCard_widget.dart';
+import 'package:projectdemo/presentation/widgets/homeCard_widget.dart';
 
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
@@ -70,16 +73,18 @@ class _LandingScreenState extends State<LandingScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            actions:isLandscape ? [] : [
-              IconButton(
-                icon: const Icon(Icons.person_outline),
-                tooltip: 'Profile',
+            actions: isLandscape
+                ? []
+                : [
+                    IconButton(
+                      icon: const Icon(Icons.person_outline),
+                      tooltip: 'Profile',
 
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, "/profile");
-                },
-              ),
-            ],
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, "/profile");
+                      },
+                    ),
+                  ],
             title: const Text("Home "),
             flexibleSpace: Container(
               decoration: const BoxDecoration(

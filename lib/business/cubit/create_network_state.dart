@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/data/model/connectUsers_model.dart';
+import 'package:projectdemo/data/models/connected_users_model.dart';
 
 @immutable
 abstract class CreateNetworkState {}
@@ -21,13 +21,11 @@ class CreateNetworkStarting extends CreateNetworkState {
 // Contains network info and list of connected users
 class CreateNetworkActive extends CreateNetworkState {
   final String networkName;
-  final String networkId;
   final int maxConnections;
   final List<ConnectedUser> connectedUsers;
 
   CreateNetworkActive({
     required this.networkName,
-    required this.networkId,
     required this.maxConnections,
     required this.connectedUsers,
   });
@@ -36,7 +34,6 @@ class CreateNetworkActive extends CreateNetworkState {
   CreateNetworkActive copyWith({List<ConnectedUser>? connectedUsers}) {
     return CreateNetworkActive(
       networkName: networkName,
-      networkId: networkId,
       maxConnections: maxConnections,
       connectedUsers: connectedUsers ?? this.connectedUsers,
     );

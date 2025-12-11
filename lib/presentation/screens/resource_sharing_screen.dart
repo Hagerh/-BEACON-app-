@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 
+
+
 class ResourceOffer {
   final String id;
   final String providerName;

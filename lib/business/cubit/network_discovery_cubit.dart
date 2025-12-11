@@ -3,9 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 
-import 'package:projectdemo/business/cubit/network_state.dart';
-import 'package:projectdemo/services/p2p_service.dart';
-import 'package:projectdemo/data/model/userProfile_model.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
+import 'package:projectdemo/business/cubit/network_discovery_state.dart';
+
 
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;
@@ -38,12 +39,16 @@ class NetworkCubit extends Cubit<NetworkState> {
   }
 
   Future<void> stopDiscovery() async {
-    // Stop discovery
-    await p2pService.stopDiscovery();
+    try {
+      // Stop discovery
+      await p2pService.stopDiscovery();
 
-    // Cancel subscription
-    await _discoverySubscription?.cancel();
-    _discoverySubscription = null;
+      // Cancel subscription
+      await _discoverySubscription?.cancel();
+      _discoverySubscription = null;
+    } catch (e) {
+      emit(NetworkError('Failed to stop discovery: $e'));
+    }
   }
 
   Future<void> connectToNetwork(BleDiscoveredDevice device) async {

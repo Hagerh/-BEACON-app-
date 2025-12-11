@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
-import '../model/device_model.dart';
-import '../model/deviceDetail_model.dart';
-import '../model/message_model.dart';
-import '../model/userProfile_model.dart';
-import '../../services/encryption_service.dart';
+import 'package:projectdemo/core/services/encryption_service.dart';
+import 'package:projectdemo/data/models/device_model.dart';
+import 'package:projectdemo/data/models/device_detail_model.dart';
+import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/data/models/user_profile_model.dart';
 
 class DatabaseHelper {
   // use singlton pattern
@@ -53,7 +53,7 @@ class DatabaseHelper {
     try {
       await db.rawQuery('PRAGMA journal_mode = WAL');
     } catch (_) {
-        print('Could not set journal_mode to WAL');  // remove 
+      print('Could not set journal_mode to WAL'); // remove
       // ignore - some platforms/versions may not accept this PRAGMA.
     }
 
@@ -198,8 +198,18 @@ class DatabaseHelper {
     });
 
     // link networks to host devices
-    await db.update('Networks', {'host_device_id': 'host-001'}, where: 'network_id = ?', whereArgs: [n1]);
-    await db.update('Networks', {'host_device_id': 'host-002'}, where: 'network_id = ?', whereArgs: [n2]);
+    await db.update(
+      'Networks',
+      {'host_device_id': 'host-001'},
+      where: 'network_id = ?',
+      whereArgs: [n1],
+    );
+    await db.update(
+      'Networks',
+      {'host_device_id': 'host-002'},
+      where: 'network_id = ?',
+      whereArgs: [n2],
+    );
 
     // Insert messages
     await db.insert('Messages', {
@@ -256,14 +266,29 @@ class DatabaseHelper {
   }
 
   // fetch devices for a given network name
-  Future<List<DeviceDetail>> fetchDevicesForNetwork(String networkName, int limit) async {
+  Future<List<DeviceDetail>> fetchDevicesForNetwork(
+    String networkName,
+    int limit,
+  ) async {
     final db = await instance.database;
-    final networks = await db.query('Networks', where: 'network_name = ?', whereArgs: [networkName], limit: 1);
+    final networks = await db.query(
+      'Networks',
+      where: 'network_name = ?',
+      whereArgs: [networkName],
+      limit: 1,
+    );
     if (networks.isEmpty) return [];
     final nid = networks.first['network_id'];
 
-    final rows = await db.query('Devices', where: 'network_id = ?', whereArgs: [nid], limit: limit);
-    return rows.map((r) => DeviceDetail.fromMap(r as Map<String, dynamic>)).toList();
+    final rows = await db.query(
+      'Devices',
+      where: 'network_id = ?',
+      whereArgs: [nid],
+      limit: limit,
+    );
+    return rows
+        .map((r) => DeviceDetail.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<Message>> fetchRecentMessages({
@@ -279,7 +304,8 @@ class DatabaseHelper {
       if (networkId != null) {
         rows = await db.query(
           'Messages',
-          where: 'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
+          where:
+              'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
           whereArgs: [networkId, forDeviceId, forDeviceId],
           orderBy: 'sent_at ASC',
           limit: limit,
@@ -308,13 +334,12 @@ class DatabaseHelper {
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
   }
 
-
-
   // Get user profile by device_id (joins Users and Devices tables)
   Future<UserProfile?> getUserProfile(String deviceId) async {
     final db = await instance.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT 
         u.username,
         u.email,
@@ -329,7 +354,9 @@ class DatabaseHelper {
       LEFT JOIN Devices d ON u.device_id = d.device_id
       WHERE u.device_id = ?
       LIMIT 1
-    ''', [deviceId]);
+    ''',
+      [deviceId],
+    );
 
     if (rows.isEmpty) return null;
     return UserProfile.fromMap(rows.first as Map<String, dynamic>);

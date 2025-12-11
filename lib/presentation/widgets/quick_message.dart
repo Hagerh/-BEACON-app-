@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
+import 'package:projectdemo/core/constants/colors.dart';
 
 class QuickMessageSheet extends StatelessWidget {
   final Map<String, dynamic> device;

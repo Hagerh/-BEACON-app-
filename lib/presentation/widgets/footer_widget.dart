@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/settings.dart';
+import 'package:projectdemo/presentation/routes/app_routes.dart';
 
-import '../../constants/colors.dart';
+import '../../core/constants/colors.dart';
 
 class FooterWidget extends StatelessWidget {
   final int currentPage;

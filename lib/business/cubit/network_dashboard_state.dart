@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:projectdemo/data/model/deviceDetail_model.dart';
+import 'package:projectdemo/data/models/device_detail_model.dart';
 
 @immutable
 abstract class NetworkDashboardState {}
-
 
 class NetworkDashboardInitial extends NetworkDashboardState {}
 
@@ -26,7 +25,9 @@ class NetworkDashboardLoaded extends NetworkDashboardState {
   NetworkDashboardLoaded updateDevice(String deviceId, {int? unread}) {
     final updatedList = connectedDevices.map((device) {
       if (device.deviceId == deviceId) {
-        return device.copyWith(unread: unread); //new Cubit state with updated device
+        return device.copyWith(
+          unread: unread,
+        ); //new Cubit state with updated device
       }
       return device;
     }).toList();

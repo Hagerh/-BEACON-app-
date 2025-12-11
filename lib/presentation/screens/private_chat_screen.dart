@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/cubit/privateChat_cubit.dart';
-import 'package:projectdemo/business/cubit/privateChat_state.dart';
-import 'package:projectdemo/constants/colors.dart';
-import 'package:projectdemo/data/model/message_model.dart';
+import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/business/cubit/private_chat_cubit.dart';
+import 'package:projectdemo/business/cubit/private_chat_state.dart';
 
 class PrivatechatScreen extends StatelessWidget {
-    PrivatechatScreen({super.key});
+  PrivatechatScreen({super.key});
 
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
