@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/constants/colors.dart';
+
 
 class ResourceOffer {
   final String id;

@@ -91,7 +91,7 @@ class MyApp extends StatelessWidget {
           final networkName = networkData?['networkName'] ?? 'Unknown Network';
 
           return BlocProvider(
-            // IMMEDIATELY call loadDevices with arguments
+        
             create: (context) => NetworkDashboardCubit(p2pService: p2pService),
             child: PublicChatScreen(networkName: networkName),
           );
