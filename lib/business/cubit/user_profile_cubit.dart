@@ -18,11 +18,11 @@ class ProfileCubit extends Cubit<ProfileState> {
       UserProfile? user;
 
       if (isViewingSelf) {
-        final deviceId = args?['deviceId'] ?? args?['currentDeviceId'];
+        final deviceId = args?['deviceId'] ?? args?['currentDeviceId'] ?? 'DEVICE-OWNER-ID'; // Fallback to default owner ID
 
-        if (deviceId != null) {
+        //now we always attempt to fatch the user profile from the database
           user = await db.getUserProfile(deviceId.toString());
-        }
+        
 
         // If no user found in database, create a default profile
         if (user == null) {

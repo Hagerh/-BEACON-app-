@@ -362,33 +362,11 @@ class DatabaseHelper {
     return UserProfile.fromMap(rows.first as Map<String, dynamic>);
   }
 
-  // Save or update user profile
+  // Save or update user profile// Save or update user profile
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
-    final existingUsers = await db.query(
-      'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
-    final userData = profile.toUserMap();
-
-    if (existingUsers.isEmpty) {
-      // Insert new user
-      await db.insert('Users', userData);
-    } else {
-      // Update existing user
-      await db.update(
-        'Users',
-        userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
-      );
-    }
-
-    // Update or insert device info (avatar and color)
+    // Check if device exists
     final existingDevices = await db.query(
       'Devices',
       where: 'device_id = ?',
@@ -397,20 +375,36 @@ class DatabaseHelper {
     );
 
     final profileMap = profile.toMap();
+    
+    // Prepare device data
     final deviceData = {
       'device_id': profile.deviceId,
       'name': profile.name,
       'status': profile.status,
       'avatar': profile.avatarLetter,
       'color': profileMap['color'],
+  
     };
 
     if (existingDevices.isEmpty) {
+     
+      
+      // Try to find an existing network to attach to, or use a default
       final networks = await db.query('Networks', limit: 1);
+      
       if (networks.isNotEmpty) {
         deviceData['network_id'] = networks.first['network_id'];
         deviceData['is_host'] = 0;
         await db.insert('Devices', deviceData);
+      } else {
+       
+         final newNetworkId = await db.insert('Networks', {
+           'network_name': 'Local Self',
+           'status': 'Offline',
+         });
+         deviceData['network_id'] = newNetworkId;
+         deviceData['is_host'] = 0;
+         await db.insert('Devices', deviceData);
       }
     } else {
       // Update existing device
@@ -422,6 +416,30 @@ class DatabaseHelper {
           'avatar': profile.avatarLetter,
           'color': profileMap['color'],
         },
+        where: 'device_id = ?',
+        whereArgs: [profile.deviceId],
+      );
+    }
+
+    
+    final existingUsers = await db.query(
+      'Users',
+      where: 'device_id = ?',
+      whereArgs: [profile.deviceId],
+      limit: 1,
+    );
+
+    final userData = profile.toUserMap();
+
+    if (existingUsers.isEmpty) {
+      // Insert new user
+     
+      await db.insert('Users', userData);
+    } else {
+      // Update existing user
+      await db.update(
+        'Users',
+        userData,
         where: 'device_id = ?',
         whereArgs: [profile.deviceId],
       );

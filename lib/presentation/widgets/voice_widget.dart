@@ -7,6 +7,8 @@ class VoiceWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
+      // FIX: Set heroTag to null to prevent Hero animation conflicts with Tooltip
+      heroTag: null,
       onPressed: () {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/presentation/widgets/beaconLogo_widget.dart';
 
 import 'package:projectdemo/presentation/widgets/landingPageButtons_widget.dart';
