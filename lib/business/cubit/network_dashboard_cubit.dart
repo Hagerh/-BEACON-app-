@@ -34,7 +34,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           emit(
             NetworkDashboardLoaded(
               networkName: networkName,
-              isServer: p2pService.isHost, // .isServer to .isHost
+              isServer: p2pService.isHost,
               connectedDevices: members,
               maxConnections: p2pService.maxMembers,
               networkId: networkId,
