@@ -14,10 +14,10 @@ import 'package:projectdemo/business/cubit/create_network_state.dart';
 
 // Handles P2P network creation and connected user management
 class CreateNetworkCubit extends Cubit<CreateNetworkState> {
-  final P2PService? _p2pService;
+  final P2PService _p2pService;
   StreamSubscription? _memberSubscription;
 
-  CreateNetworkCubit({P2PService? p2pService})
+  CreateNetworkCubit({required P2PService p2pService})
     : _p2pService = p2pService,
       super(CreateNetworkInitial());
 
@@ -25,7 +25,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     required String networkName,
     required int maxConnections,
   }) async {
-    // Input Validation: network name
     if (networkName.trim().isEmpty) {
       emit(
         CreateNetworkError(
@@ -36,7 +35,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
       return;
     }
 
-    // Input Validation: max connections
     if (maxConnections < 2) {
       emit(
         CreateNetworkError(
@@ -46,7 +44,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
       );
       return;
     }
-
+    // validated
     emit(
       CreateNetworkStarting(
         networkName: networkName,
@@ -58,30 +56,24 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
       // Get current user profile from database
       final currentUser = await _getCurrentUserProfile();
 
-      // Generate unique network ID
-      final networkId = _generateNetworkId();
-
       // Create P2P network
-      if (_p2pService != null) {
-        await _p2pService.initializeServer(currentUser);
+      await _p2pService.initializeServer(currentUser);
+      await _p2pService.createNetwork(name: networkName, max: maxConnections);
 
-        await _p2pService.createNetwork(name: networkName, max: maxConnections);
-
-        // Listen for member joins / leaves
-        _memberSubscription = _p2pService.membersStream.listen(
-          (members) {
-            _updateConnectedUsers(members);
-          },
-          onError: (error) {
-            emit(
-              CreateNetworkError(
-                message: 'Connection error: $error',
-                previousState: state,
-              ),
-            );
-          },
-        );
-      }
+      // Listen for member joins / leaves
+      _memberSubscription = _p2pService.membersStream.listen(
+        (members) {
+          _updateConnectedUsers(members);
+        },
+        onError: (error) {
+          emit(
+            CreateNetworkError(
+              message: 'Connection error: $error',
+              previousState: state,
+            ),
+          );
+        },
+      );
 
       // Create host user as first member
       final hostUser = ConnectedUser(
@@ -93,7 +85,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
       emit(
         CreateNetworkActive(
           networkName: networkName,
-          networkId: networkId,
           maxConnections: maxConnections,
           connectedUsers: [hostUser],
         ),
@@ -114,9 +105,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
     try {
       // Stop P2P network
-      if (_p2pService != null) {
-        await _p2pService.stopNetwork();
-      }
+      await _p2pService.stopNetwork();
 
       await _memberSubscription?.cancel();
       _memberSubscription = null;
@@ -139,9 +128,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
     try {
       // Send kick command via P2P service
-      if (_p2pService != null) {
-        _p2pService.kickUser(userId);
-      }
+      _p2pService.kickUser(userId);
 
       // Remove user from connected users list
       final updatedUsers = currentState.connectedUsers
@@ -229,6 +216,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     // If not found, create a default profile
     if (user == null) {
       user = UserProfile(
+        emergencyContact: '',
         name: 'My Device',
         deviceId: deviceId,
         avatarLetter: 'M',
@@ -245,13 +233,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     }
 
     return user;
-  }
-
-  // Generates a unique network ID
-  String _generateNetworkId() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final shortId = timestamp % 10000;
-    return 'BEACON-$shortId';
   }
 
   // Updates connected users based on P2P service member list
@@ -277,7 +258,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   Future<void> close() async {
     await _memberSubscription?.cancel();
 
-    if (state is CreateNetworkActive && _p2pService != null) {
+    if (state is CreateNetworkActive) {
       await _p2pService.stopNetwork();
     }
 

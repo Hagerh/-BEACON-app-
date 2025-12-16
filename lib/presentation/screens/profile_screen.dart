@@ -33,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
                   icon: const Icon(Icons.home_outlined),
                   tooltip: 'Home',
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/");
+                    Navigator.pushReplacementNamed(context, "/landing");
                   },
                 ),
               ],
@@ -65,32 +65,34 @@ class ProfileScreen extends StatelessWidget {
     }
 
     if (state is ProfileError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.alertRed,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              state.message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                final args =
-                    ModalRoute.of(context)?.settings.arguments
-                        as Map<String, dynamic>?;
-                context.read<ProfileCubit>().loadProfile(args);
-              },
-              child: const Text('Retry'),
-            ),
-          ],
+      return SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: AppColors.alertRed,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                state.message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  final args =
+                      ModalRoute.of(context)?.settings.arguments
+                          as Map<String, dynamic>?;
+                  context.read<ProfileCubit>().loadProfile(args);
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -128,10 +130,12 @@ class ProfileScreen extends StatelessWidget {
                           phone: profile.phone,
                           address: profile.address,
                           bloodType: profile.bloodType,
+                          emergencyContact: profile.emergencyContact,
                           editable: isEditable,
                           onSave: isEditable
                               ? (data) {
                                   context.read<ProfileCubit>().saveProfile(
+                                    emergencyContact: data['emergencyContact']!,
                                     name: data['name']!,
                                     email: data['email']!,
                                     phone: data['phone']!,
@@ -177,6 +181,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   UserinfocardWidget(
+                    emergencyContact: profile.emergencyContact,
                     name: profile.name,
                     email: profile.email,
                     phone: profile.phone,
@@ -191,6 +196,7 @@ class ProfileScreen extends StatelessWidget {
                               phone: data['phone']!,
                               address: data['address']!,
                               bloodType: data['bloodType']!,
+                              emergencyContact: data['emergencyContact']!,
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

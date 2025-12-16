@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
 import '../../core/constants/colors.dart';
-
 
 class BeaconLogo extends StatelessWidget {
   const BeaconLogo({super.key});
@@ -10,9 +8,9 @@ class BeaconLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
-
+      mainAxisSize: MainAxisSize.min, //  to ensure proper centering
       children: [
-        const SizedBox(height:20),
+        const SizedBox(height: 20),
         Stack(
           alignment: Alignment.center,
           children: [
@@ -20,7 +18,6 @@ class BeaconLogo extends StatelessWidget {
             Icon(Icons.circle, size: 20, color: AppColors.alertRed),
           ],
         ),
-
         Text(
           "BEACON",
           style: TextStyle(

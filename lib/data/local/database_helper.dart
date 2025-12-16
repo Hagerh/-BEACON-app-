@@ -38,13 +38,14 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       password: encryptionKey, // SQLCipher encryption key
       onConfigure: (db) async {
         // Enable foreign keys
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _createDB, // create tables if not exist
+      onUpgrade: _upgradeDB,
     );
 
     // Some SQLite PRAGMA statements (like journal_mode) can be platform-sensitive when
@@ -61,18 +62,18 @@ class DatabaseHelper {
   }
 
   Future _createDB(Database db, int version) async {
-    // Networks
+    // Create Networks table first (without foreign key to Devices)
     await db.execute('''
       CREATE TABLE Networks (
         network_id INTEGER PRIMARY KEY AUTOINCREMENT,
         network_name TEXT NOT NULL,
         host_device_id TEXT,
         status TEXT NOT NULL DEFAULT 'Active',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(host_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     ''');
-    // Devices
+    
+    // Create Devices table (references Networks)
     await db.execute('''
       CREATE TABLE Devices (
         device_id TEXT PRIMARY KEY,
@@ -90,6 +91,11 @@ class DatabaseHelper {
         FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE
       )
     ''');
+    
+    // Add foreign key constraint from Networks to Devices after both tables exist
+    // Note: SQLite doesn't support adding foreign keys via ALTER TABLE easily,
+    // so we'll handle referential integrity in application logic
+    // The host_device_id will be validated when devices are inserted/updated
 
     // Users
     await db.execute('''
@@ -100,8 +106,9 @@ class DatabaseHelper {
         phone TEXT,
         address TEXT,
         blood_type TEXT,
+        emergency_contact TEXT,
         device_id TEXT,
-        FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
+        FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE CASCADE
       )
     ''');
 
@@ -131,130 +138,79 @@ class DatabaseHelper {
         device_id TEXT,
         resource_type TEXT NOT NULL,
         description TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 0,
         status TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE,
         FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
       )
     ''');
 
-    // Seed some dummy data
-    await _seedDummyData(db);
+    await db.execute('''
+      CREATE TABLE ResourceRequests (
+        request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        resource_id INTEGER NOT NULL,
+        requester_device_id TEXT,
+        quantity INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Pending',
+        requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(resource_id) REFERENCES Resources(resource_id) ON DELETE CASCADE,
+        FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
+      )
+    ''');
+
+    // Handle migrations for future versions
+    await _upgradeDB(db, 1, version);
   }
 
-  Future _seedDummyData(Database db) async {
-    // Insert a couple of networks
-    final n1 = await db.insert('Networks', {
-      'network_name': 'Family Group',
-      'status': 'Active',
-    });
+  // Migration handler
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Ensure Resources has quantity and updated_at
+      final columns = await db.rawQuery('PRAGMA table_info(Resources)');
+      final hasQuantity =
+          columns.any((c) => c['name']?.toString() == 'quantity');
+      if (!hasQuantity) {
+        await db.execute(
+            'ALTER TABLE Resources ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0');
+      }
+      final hasUpdatedAt =
+          columns.any((c) => c['name']?.toString() == 'updated_at');
+      if (!hasUpdatedAt) {
+        await db.execute(
+            'ALTER TABLE Resources ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+      }
 
-    final n2 = await db.insert('Networks', {
-      'network_name': 'Rescue Team',
-      'status': 'Active',
-    });
-
-    // Insert host devices and peers
-    await db.insert('Devices', {
-      'device_id': 'host-001',
-      'network_id': n1,
-      'name': 'Emergency hub 01',
-      'status': 'Active',
-      'unread': 0,
-      'signal_strength': 95,
-      'distance': '0m',
-      'avatar': 'E',
-      'color': '#FF8A00',
-      'ip_address': '192.168.1.10',
-      'is_host': 1,
-    });
-
-    await db.insert('Devices', {
-      'device_id': 'peer-101',
-      'network_id': n1,
-      'name': 'Available Network 02',
-      'status': 'Active',
-      'unread': 1,
-      'signal_strength': 78,
-      'distance': '50m',
-      'avatar': 'A',
-      'color': '#00BFA6',
-      'ip_address': '192.168.1.11',
-      'is_host': 0,
-    });
-
-    await db.insert('Devices', {
-      'device_id': 'host-002',
-      'network_id': n2,
-      'name': 'Available Network 03',
-      'status': 'Active',
-      'unread': 0,
-      'signal_strength': 88,
-      'distance': '30m',
-      'avatar': 'R',
-      'color': '#0086FF',
-      'ip_address': '10.0.0.5',
-      'is_host': 1,
-    });
-
-    // link networks to host devices
-    await db.update(
-      'Networks',
-      {'host_device_id': 'host-001'},
-      where: 'network_id = ?',
-      whereArgs: [n1],
-    );
-    await db.update(
-      'Networks',
-      {'host_device_id': 'host-002'},
-      where: 'network_id = ?',
-      whereArgs: [n2],
-    );
-
-    // Insert messages
-    await db.insert('Messages', {
-      'network_id': n1,
-      'sender_device_id': 'peer-101',
-      'receiver_device_id': 'host-001',
-      'message_content': 'Hey! Are you safe?',
-      'is_mine': 0,
-      'is_delivered': 1,
-    });
-
-    await db.insert('Messages', {
-      'network_id': n1,
-      'sender_device_id': 'host-001',
-      'receiver_device_id': 'peer-101',
-      'message_content': 'Yes, I\'m okay. Just staying indoors.',
-      'is_mine': 1,
-      'is_delivered': 1,
-    });
-
-    await db.insert('Messages', {
-      'network_id': n2,
-      'sender_device_id': 'host-002',
-      'receiver_device_id': 'peer-101',
-      'message_content': 'Good to hear! Do you need any supplies?',
-      'is_mine': 0,
-      'is_delivered': 1,
-    });
-
-    // Resources
-    await db.insert('Resources', {
-      'network_id': n1,
-      'device_id': 'peer-101',
-      'resource_type': 'Medical',
-      'description': 'Need first aid kit',
-      'status': 'Pending',
-    });
+      // Ensure ResourceRequests table exists
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ResourceRequests (
+          request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          resource_id INTEGER NOT NULL,
+          requester_device_id TEXT,
+          quantity INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'Pending',
+          requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(resource_id) REFERENCES Resources(resource_id) ON DELETE CASCADE,
+          FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
+        )
+      ''');
+    }
   }
 
-  //
+ 
+
+     
+
+  // Fetch network summaries - returns list of networks as Device objects
   Future<List<Device>> fetchNetworkSummaries() async {
     final db = await instance.database;
 
     final rows = await db.rawQuery('''
-      SELECT n.network_id, n.network_name, n.host_device_id,
+      SELECT 
+        n.network_id AS id,
+        n.network_name,
+        n.host_device_id,
         (SELECT COUNT(*) FROM Devices d WHERE d.network_id = n.network_id) AS connectors,
         (SELECT last_seen_at FROM Devices d WHERE d.device_id = n.host_device_id) AS last_seen_at,
         (SELECT status FROM Devices d WHERE d.device_id = n.host_device_id) AS host_status
@@ -347,6 +303,7 @@ class DatabaseHelper {
         u.address,
         u.blood_type,
         u.device_id,
+        u.emergency_contact,
         d.status,
         d.avatar,
         d.color
@@ -366,29 +323,7 @@ class DatabaseHelper {
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
-    final existingUsers = await db.query(
-      'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
-    final userData = profile.toUserMap();
-
-    if (existingUsers.isEmpty) {
-      // Insert new user
-      await db.insert('Users', userData);
-    } else {
-      // Update existing user
-      await db.update(
-        'Users',
-        userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
-      );
-    }
-
-    // Update or insert device info (avatar and color)
+    // Check if device exists
     final existingDevices = await db.query(
       'Devices',
       where: 'device_id = ?',
@@ -397,20 +332,42 @@ class DatabaseHelper {
     );
 
     final profileMap = profile.toMap();
-    final deviceData = {
+    
+    // Prepare device data
+    final deviceData = <String, dynamic>{
       'device_id': profile.deviceId,
       'name': profile.name,
       'status': profile.status,
       'avatar': profile.avatarLetter,
       'color': profileMap['color'],
+      'ip_address': null, // Can be set later when P2P connection is established
     };
 
     if (existingDevices.isEmpty) {
+      // Try to find an existing network to attach to, or use a default
       final networks = await db.query('Networks', limit: 1);
+      
       if (networks.isNotEmpty) {
         deviceData['network_id'] = networks.first['network_id'];
         deviceData['is_host'] = 0;
         await db.insert('Devices', deviceData);
+      } else {
+        // Create a default network for the user
+        final newNetworkId = await db.insert('Networks', {
+          'network_name': 'Local Self',
+          'status': 'Offline',
+        });
+        deviceData['network_id'] = newNetworkId;
+        deviceData['is_host'] = 1; // User is host of their own network
+        await db.insert('Devices', deviceData);
+        
+        // Update network to reference this device as host
+        await db.update(
+          'Networks',
+          {'host_device_id': profile.deviceId},
+          where: 'network_id = ?',
+          whereArgs: [newNetworkId],
+        );
       }
     } else {
       // Update existing device
@@ -426,6 +383,400 @@ class DatabaseHelper {
         whereArgs: [profile.deviceId],
       );
     }
+
+    
+    final existingUsers = await db.query(
+      'Users',
+      where: 'device_id = ?',
+      whereArgs: [profile.deviceId],
+      limit: 1,
+    );
+
+    final userData = profile.toUserMap();
+
+    if (existingUsers.isEmpty) {
+      // Insert new user
+     
+      await db.insert('Users', userData);
+    } else {
+      // Update existing user
+      await db.update(
+        'Users',
+        userData,
+        where: 'device_id = ?',
+        whereArgs: [profile.deviceId],
+      );
+    }
+  }
+
+  // Create a new network and return its ID
+  Future<int> createNetwork({
+    required String networkName,
+    required String hostDeviceId,
+    String status = 'Active',
+  }) async {
+    final db = await instance.database;
+    
+    final networkId = await db.insert('Networks', {
+      'network_name': networkName,
+      'host_device_id': hostDeviceId,
+      'status': status,
+    });
+    
+    return networkId;
+  }
+
+  // Get network by ID
+  Future<Map<String, dynamic>?> getNetworkById(int networkId) async {
+    final db = await instance.database;
+    final networks = await db.query(
+      'Networks',
+      where: 'network_id = ?',
+      whereArgs: [networkId],
+      limit: 1,
+    );
+    return networks.isEmpty ? null : networks.first;
+  }
+
+  // Get network by name
+  Future<Map<String, dynamic>?> getNetworkByName(String networkName) async {
+    final db = await instance.database;
+    final networks = await db.query(
+      'Networks',
+      where: 'network_name = ?',
+      whereArgs: [networkName],
+      limit: 1,
+    );
+    return networks.isEmpty ? null : networks.first;
+  }
+
+  // Insert or update a device in a network
+  Future<void> upsertDevice({
+    required String deviceId,
+    required int networkId,
+    required String name,
+    required String status,
+    String? ipAddress,
+    int? signalStrength,
+    String? distance,
+    String? avatar,
+    String? color,
+    int isHost = 0,
+  }) async {
+    final db = await instance.database;
+    
+    final existing = await db.query(
+      'Devices',
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+      limit: 1,
+    );
+
+    final deviceData = <String, dynamic>{
+      'device_id': deviceId,
+      'network_id': networkId,
+      'name': name,
+      'status': status,
+      'last_seen_at': DateTime.now().toIso8601String(),
+      'is_host': isHost,
+    };
+
+    if (ipAddress != null) deviceData['ip_address'] = ipAddress;
+    if (signalStrength != null) deviceData['signal_strength'] = signalStrength;
+    if (distance != null) deviceData['distance'] = distance;
+    if (avatar != null) deviceData['avatar'] = avatar;
+    if (color != null) deviceData['color'] = color;
+
+    if (existing.isEmpty) {
+      deviceData['unread'] = 0;
+      await db.insert('Devices', deviceData);
+    } else {
+      await db.update(
+        'Devices',
+        deviceData,
+        where: 'device_id = ?',
+        whereArgs: [deviceId],
+      );
+    }
+  }
+
+  // Update device last seen timestamp
+  Future<void> updateDeviceLastSeen(String deviceId) async {
+    final db = await instance.database;
+    await db.update(
+      'Devices',
+      {'last_seen_at': DateTime.now().toIso8601String()},
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+    );
+  }
+
+  // Insert a new message
+  Future<int> insertMessage({
+    required int networkId,
+    String? senderDeviceId,
+    String? receiverDeviceId,
+    required String messageContent,
+    bool isMine = false,
+    bool isDelivered = false,
+  }) async {
+    final db = await instance.database;
+    
+    return await db.insert('Messages', {
+      'network_id': networkId,
+      'sender_device_id': senderDeviceId,
+      'receiver_device_id': receiverDeviceId,
+      'message_content': messageContent,
+      'is_mine': isMine ? 1 : 0,
+      'is_delivered': isDelivered ? 1 : 0,
+      'sent_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Update message delivery status
+  Future<void> updateMessageDelivery(int messageId, bool isDelivered) async {
+    final db = await instance.database;
+    await db.update(
+      'Messages',
+      {'is_delivered': isDelivered ? 1 : 0},
+      where: 'message_id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
+  // Get devices by network ID
+  Future<List<DeviceDetail>> getDevicesByNetworkId(int networkId, {int? limit}) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'Devices',
+      where: 'network_id = ?',
+      whereArgs: [networkId],
+      limit: limit,
+    );
+    return rows
+        .map((r) => DeviceDetail.fromMap(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  // Update device unread count
+  Future<void> updateDeviceUnread(String deviceId, int unreadCount) async {
+    final db = await instance.database;
+    await db.update(
+      'Devices',
+      {'unread': unreadCount},
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+    );
+  }
+
+  // Increment device unread count
+  Future<void> incrementDeviceUnread(String deviceId) async {
+    final db = await instance.database;
+    await db.rawUpdate(
+      'UPDATE Devices SET unread = unread + 1 WHERE device_id = ?',
+      [deviceId],
+    );
+  }
+
+  // Reset device unread count
+  Future<void> resetDeviceUnread(String deviceId) async {
+    await updateDeviceUnread(deviceId, 0);
+  }
+
+  // Delete a device; if it is the host, delete its network (cascades devices/resources/messages)
+  Future<void> deleteDevice(String deviceId) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'Devices',
+        where: 'device_id = ?',
+        whereArgs: [deviceId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+
+      final device = rows.first;
+      final isHost = (device['is_host'] is int)
+          ? (device['is_host'] as int) == 1
+          : device['is_host'] == true;
+      final networkId = device['network_id'];
+
+      if (isHost && networkId != null) {
+        // Delete network; ON DELETE CASCADE removes its devices/resources/messages
+        await txn.delete(
+          'Networks',
+          where: 'network_id = ?',
+          whereArgs: [networkId],
+        );
+      } else {
+        // Just delete the device
+        await txn.delete(
+          'Devices',
+          where: 'device_id = ?',
+          whereArgs: [deviceId],
+        );
+      }
+    });
+  }
+
+  // Delete a network by id, only if requester is the host (cascades to devices/resources/messages)
+  Future<void> deleteNetwork({
+    required int networkId,
+    required String requesterDeviceId,
+  }) async {
+    final db = await instance.database;
+
+    await db.transaction((txn) async {
+      final networks = await txn.query(
+        'Networks',
+        where: 'network_id = ?',
+        whereArgs: [networkId],
+        limit: 1,
+      );
+      if (networks.isEmpty) return;
+
+      final hostId = networks.first['host_device_id']?.toString();
+      if (hostId != null && hostId != requesterDeviceId) {
+        throw Exception('Only the host device can delete this network');
+      }
+
+      await txn.delete(
+        'Networks',
+        where: 'network_id = ?',
+        whereArgs: [networkId],
+      );
+    });
+  }
+
+  // Add a resource provided by a device to a network
+  Future<int> addResource({
+    required int networkId,
+    required String deviceId,
+    required String resourceType,
+    required String description,
+    required int quantity,
+    String status = 'Available',
+  }) async {
+    final db = await instance.database;
+    return await db.insert('Resources', {
+      'network_id': networkId,
+      'device_id': deviceId,
+      'resource_type': resourceType,
+      'description': description,
+      'quantity': quantity,
+      'status': status,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  // Request a resource: deduct quantity atomically and log the request
+  Future<void> requestResource({
+    required int resourceId,
+    required int requestQuantity,
+    String? requesterDeviceId,
+  }) async {
+    final db = await instance.database;
+
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'Resources',
+        where: 'resource_id = ?',
+        whereArgs: [resourceId],
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        throw Exception('Resource not found');
+      }
+
+      final resource = rows.first;
+      final currentQty =
+          (resource['quantity'] is int) ? resource['quantity'] as int : int.tryParse(resource['quantity'].toString()) ?? 0;
+
+      if (requestQuantity <= 0) {
+        throw Exception('Requested quantity must be greater than zero');
+      }
+      if (currentQty < requestQuantity) {
+        throw Exception('Not enough resource quantity available');
+      }
+
+      final remaining = currentQty - requestQuantity;
+      final newStatus = remaining > 0 ? (resource['status']?.toString() ?? 'Available') : 'Unavailable';
+
+      await txn.update(
+        'Resources',
+        {
+          'quantity': remaining,
+          'status': newStatus,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'resource_id = ?',
+        whereArgs: [resourceId],
+      );
+
+      await txn.insert('ResourceRequests', {
+        'resource_id': resourceId,
+        'requester_device_id': requesterDeviceId,
+        'quantity': requestQuantity,
+        // We deduct the full requested quantity or throw; so this is fulfilled.
+        'status': 'Fulfilled',
+        'requested_at': DateTime.now().toIso8601String(),
+      });
+    });
+  }
+
+  // Update resource quantity directly (provider/admin only) and log adjustment for audit
+  Future<void> updateResourceQuantity({
+    required int resourceId,
+    required int quantity,
+    required String providerDeviceId,
+    String? status,
+  }) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      await txn.update(
+        'Resources',
+        {
+          'quantity': quantity,
+          if (status != null) 'status': status,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'resource_id = ?',
+        whereArgs: [resourceId],
+      );
+
+      // Log an adjustment as a special ResourceRequest entry for audit trail
+      await txn.insert('ResourceRequests', {
+        'resource_id': resourceId,
+        'requester_device_id': providerDeviceId,
+        'quantity': 0,
+        'status': 'Adjusted',
+        'requested_at': DateTime.now().toIso8601String(),
+      });
+    });
+  }
+
+  // Fetch resources for a network
+  Future<List<Map<String, dynamic>>> fetchResources(int networkId) async {
+    final db = await instance.database;
+    return await db.query(
+      'Resources',
+      where: 'network_id = ?',
+      whereArgs: [networkId],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  // Fetch requests for a given resource
+  Future<List<Map<String, dynamic>>> fetchResourceRequests(int resourceId) async {
+    final db = await instance.database;
+    return await db.query(
+      'ResourceRequests',
+      where: 'resource_id = ?',
+      whereArgs: [resourceId],
+      orderBy: 'requested_at DESC',
+    );
   }
 
   Future close() async {
