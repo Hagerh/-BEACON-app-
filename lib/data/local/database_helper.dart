@@ -719,29 +719,42 @@ class DatabaseHelper {
         'resource_id': resourceId,
         'requester_device_id': requesterDeviceId,
         'quantity': requestQuantity,
-        'status': remaining > 0 ? 'Partially Fulfilled' : 'Fulfilled',
+        // We deduct the full requested quantity or throw; so this is fulfilled.
+        'status': 'Fulfilled',
         'requested_at': DateTime.now().toIso8601String(),
       });
     });
   }
 
-  // Update resource quantity directly (admin/owner use)
+  // Update resource quantity directly (provider/admin only) and log adjustment for audit
   Future<void> updateResourceQuantity({
     required int resourceId,
     required int quantity,
+    required String providerDeviceId,
     String? status,
   }) async {
     final db = await instance.database;
-    await db.update(
-      'Resources',
-      {
-        'quantity': quantity,
-        if (status != null) 'status': status,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      where: 'resource_id = ?',
-      whereArgs: [resourceId],
-    );
+    await db.transaction((txn) async {
+      await txn.update(
+        'Resources',
+        {
+          'quantity': quantity,
+          if (status != null) 'status': status,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'resource_id = ?',
+        whereArgs: [resourceId],
+      );
+
+      // Log an adjustment as a special ResourceRequest entry for audit trail
+      await txn.insert('ResourceRequests', {
+        'resource_id': resourceId,
+        'requester_device_id': providerDeviceId,
+        'quantity': 0,
+        'status': 'Adjusted',
+        'requested_at': DateTime.now().toIso8601String(),
+      });
+    });
   }
 
   // Fetch resources for a network
