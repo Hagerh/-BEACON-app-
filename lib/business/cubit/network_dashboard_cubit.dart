@@ -14,7 +14,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     : super(NetworkDashboardInitial());
 
   // Start listening to member updates from P2P service
-  void startListening(String networkName) async {
+  /*void startListening(String networkName) async {
     emit(NetworkDashboardLoading(networkName));
 
     try {
@@ -34,10 +34,41 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           emit(
             NetworkDashboardLoaded(
               networkName: networkName,
-              isServer: p2pService.isHost,
+              isServer: p2pService.isHost, // .isServer to .isHost
               connectedDevices: members,
               maxConnections: p2pService.maxMembers,
               networkId: networkId,
+            ),
+          );
+        },
+        onError: (error) {
+          emit(NetworkDashboardError('Connection lost: $error'));
+        },
+      );
+    } catch (e) {
+      emit(NetworkDashboardError('Failed to load dashboard: $e'));
+    }
+  }*/
+
+  void startListening(String networkName) async {
+    emit(NetworkDashboardLoading(networkName));
+
+    try {
+      _membersSubscription = p2pService.membersStream.listen(
+        (members) async {
+          // Update device timestamps (doesn't need networkId)
+          final db = DatabaseHelper.instance;
+          for (var member in members) {
+            await db.updateDeviceLastSeen(member.deviceId);
+          }
+
+          emit(
+            NetworkDashboardLoaded(
+              networkName: networkName,
+              isServer: p2pService.isHost,
+              connectedDevices: members,
+              maxConnections: p2pService.maxMembers,
+              networkId: null, // or remove from state entirely
             ),
           );
         },
@@ -117,7 +148,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   }
 
   /// Update network name (host only). Persists to SQLite and updates Cubit state.
-  Future<void> updateNetworkName(String newName) async {
+  /*Future<void> updateNetworkName(String newName) async {
     if (state is! NetworkDashboardLoaded) return;
     final current = state as NetworkDashboardLoaded;
     final trimmed = newName.trim();
@@ -129,10 +160,21 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         await db.updateNetworkName(current.networkId!, trimmed);
       }
 
-      emit(current.copyWith(networkName: trimmed));
+      emit(
+        current.copyWith(networkName: trimmed),
+      );
     } catch (e) {
       emit(NetworkDashboardError('Failed to update network name: $e'));
     }
+  }*/
+  Future<void> updateNetworkName(String newName) async {
+    if (state is! NetworkDashboardLoaded) return;
+    final current = state as NetworkDashboardLoaded;
+    final trimmed = newName.trim();
+    if (trimmed.isEmpty || trimmed == current.networkName) return;
+
+    // No DB, just update Cubit state
+    emit(current.copyWith(networkName: trimmed));
   }
 
   /// Update max connections limit for this network (host only).
