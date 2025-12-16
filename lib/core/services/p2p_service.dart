@@ -56,7 +56,7 @@ class P2PService {
     }
   }
 
-  Future<void> createNetwork({required String name, required int max}) async {
+  Future<void> createNetwork({required String name, required int max}) async { //todo name?
     try {
       _maxMembers = max;
 
@@ -88,19 +88,6 @@ class P2PService {
     _client!.streamReceivedTexts().listen(_handleIncomingPacket);
   }
 
-  Future<void> connectToServer(BleDiscoveredDevice device) async {
-    // Stop scanning before connecting
-    await _client!.stopScan();
-
-    // Connect to the server
-    await _client!.connectWithDevice(device);
-
-    // Listen to client list changes (automatic member management)
-    _client!.streamClientList().listen((clients) {
-      _syncMembersFromClientList(clients);
-    });
-  }
-
   Future<void> startDiscovery() async {
     if (_client == null) return;
     if (isScanning) return;
@@ -118,6 +105,19 @@ class P2PService {
 
     await _client?.stopScan();
     _discoveryController.add([]);
+  }
+
+ Future<void> connectToServer(BleDiscoveredDevice device) async {
+    // Stop scanning before connecting
+    await _client!.stopScan();
+
+    // Connect to the server
+    await _client!.connectWithDevice(device);
+
+    // Listen to client list changes (automatic member management)
+    _client!.streamClientList().listen((clients) {
+      _syncMembersFromClientList(clients);
+    });
   }
 
   Future<void> leaveNetwork() async {
