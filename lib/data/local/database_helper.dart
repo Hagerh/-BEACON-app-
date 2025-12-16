@@ -159,6 +159,43 @@ class DatabaseHelper {
         FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
       )
     ''');
+
+    // Handle migrations for future versions
+    await _upgradeDB(db, 1, version);
+  }
+
+  // Migration handler
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Ensure Resources has quantity and updated_at
+      final columns = await db.rawQuery('PRAGMA table_info(Resources)');
+      final hasQuantity =
+          columns.any((c) => c['name']?.toString() == 'quantity');
+      if (!hasQuantity) {
+        await db.execute(
+            'ALTER TABLE Resources ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0');
+      }
+      final hasUpdatedAt =
+          columns.any((c) => c['name']?.toString() == 'updated_at');
+      if (!hasUpdatedAt) {
+        await db.execute(
+            'ALTER TABLE Resources ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+      }
+
+      // Ensure ResourceRequests table exists
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ResourceRequests (
+          request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          resource_id INTEGER NOT NULL,
+          requester_device_id TEXT,
+          quantity INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'Pending',
+          requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(resource_id) REFERENCES Resources(resource_id) ON DELETE CASCADE,
+          FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
+        )
+      ''');
+    }
   }
 
  
