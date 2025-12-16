@@ -216,6 +216,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     // If not found, create a default profile
     if (user == null) {
       user = UserProfile(
+        emergencyContact: '',
         name: 'My Device',
         deviceId: deviceId,
         avatarLetter: 'M',

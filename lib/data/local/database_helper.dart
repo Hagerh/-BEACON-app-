@@ -100,6 +100,7 @@ class DatabaseHelper {
         phone TEXT,
         address TEXT,
         blood_type TEXT,
+        emergency_contact TEXT,
         device_id TEXT,
         FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
       )
@@ -347,6 +348,7 @@ class DatabaseHelper {
         u.address,
         u.blood_type,
         u.device_id,
+        u.emergency_contact,
         d.status,
         d.avatar,
         d.color

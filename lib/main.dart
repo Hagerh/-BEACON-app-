@@ -53,6 +53,7 @@ class MyApp extends StatelessWidget {
         networkScreen: (context) {
           // TODO: Get actual current user from your auth/storage
           final currentUser = UserProfile(
+            emergencyContact: '123456789',
             name: 'My Device',
             deviceId: 'device_${DateTime.now().millisecondsSinceEpoch}',
             avatarLetter: 'M',

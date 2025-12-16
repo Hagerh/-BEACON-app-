@@ -28,6 +28,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         if (user == null) {
           final defaultDeviceId = deviceId?.toString() ?? 'DEVICE-OWNER-ID';
           user = UserProfile(
+            emergencyContact: '',
             name: 'Current User',
             avatarLetter: 'C',
             avatarColor: AppColors.connectionTeal,
@@ -50,6 +51,7 @@ class ProfileCubit extends Cubit<ProfileState> {
           final peerDeviceId = deviceId?.toString() ?? 'DEVICE-PEER-ID';
           final name = args?['name']?.toString() ?? 'Peer User';
           user = UserProfile(
+            emergencyContact: '',
             name: name,
             avatarLetter:
                 args?['avatar']?.toString() ??
@@ -93,6 +95,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     required String phone,
     required String address,
     required String bloodType,
+    required String emergencyContact,
   }) async {
     if (state is ProfileLoaded) {
       final currentState = state as ProfileLoaded;
@@ -104,6 +107,7 @@ class ProfileCubit extends Cubit<ProfileState> {
           phone: phone,
           address: address,
           bloodType: bloodType,
+          emergencyContact: emergencyContact,
         );
 
         final db = DatabaseHelper.instance;
