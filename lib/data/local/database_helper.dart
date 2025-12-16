@@ -583,6 +583,71 @@ class DatabaseHelper {
     await updateDeviceUnread(deviceId, 0);
   }
 
+  // Delete a device; if it is the host, delete its network (cascades devices/resources/messages)
+  Future<void> deleteDevice(String deviceId) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'Devices',
+        where: 'device_id = ?',
+        whereArgs: [deviceId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+
+      final device = rows.first;
+      final isHost = (device['is_host'] is int)
+          ? (device['is_host'] as int) == 1
+          : device['is_host'] == true;
+      final networkId = device['network_id'];
+
+      if (isHost && networkId != null) {
+        // Delete network; ON DELETE CASCADE removes its devices/resources/messages
+        await txn.delete(
+          'Networks',
+          where: 'network_id = ?',
+          whereArgs: [networkId],
+        );
+      } else {
+        // Just delete the device
+        await txn.delete(
+          'Devices',
+          where: 'device_id = ?',
+          whereArgs: [deviceId],
+        );
+      }
+    });
+  }
+
+  // Delete a network by id, only if requester is the host (cascades to devices/resources/messages)
+  Future<void> deleteNetwork({
+    required int networkId,
+    required String requesterDeviceId,
+  }) async {
+    final db = await instance.database;
+
+    await db.transaction((txn) async {
+      final networks = await txn.query(
+        'Networks',
+        where: 'network_id = ?',
+        whereArgs: [networkId],
+        limit: 1,
+      );
+      if (networks.isEmpty) return;
+
+      final hostId = networks.first['host_device_id']?.toString();
+      if (hostId != null && hostId != requesterDeviceId) {
+        throw Exception('Only the host device can delete this network');
+      }
+
+      await txn.delete(
+        'Networks',
+        where: 'network_id = ?',
+        whereArgs: [networkId],
+      );
+    });
+  }
+
   // Add a resource provided by a device to a network
   Future<int> addResource({
     required int networkId,
