@@ -8,6 +8,7 @@ class UserinfocardWidget extends StatefulWidget {
   final String? address;
   final String? bloodType;
   final bool editable;
+  final String? emergencyContact;
   final void Function(Map<String, String> data)? onSave; // Callback for save action
 
   const UserinfocardWidget({
@@ -18,6 +19,7 @@ class UserinfocardWidget extends StatefulWidget {
     this.address,
     this.bloodType,
     this.editable = true, this.onSave,
+    this.emergencyContact,
   });
 
   @override
@@ -31,6 +33,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
   late final TextEditingController _phoneController;
   late final TextEditingController _addressController;
   late final TextEditingController _bloodTypeController;
+  late final TextEditingController _emergencyContactController;
 
   @override
   void initState() {
@@ -40,6 +43,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
     _phoneController = TextEditingController(text: widget.phone ?? '');
     _addressController = TextEditingController(text: widget.address ?? '');
     _bloodTypeController = TextEditingController(text: widget.bloodType ?? '');
+    _emergencyContactController = TextEditingController(text: widget.emergencyContact ?? '');
   }
 
   @override
@@ -131,6 +135,24 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
                 },
               ),
               const SizedBox(height: 16),
+                 TextFormField(
+                controller: _emergencyContactController,
+                enabled: widget.editable,
+                decoration: InputDecoration(
+                  labelText: 'emergency Phone Number',
+                  prefixIcon: const Icon(Icons.phone),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                validator: (value) {
+                  if (widget.editable && (value == null || value.isEmpty)) {
+                    return 'Please enter an emergency phone number';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
                 enabled: widget.editable,
@@ -172,6 +194,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
                         'phone': _phoneController.text,
                         'address': _addressController.text,
                         'bloodType': _bloodTypeController.text,
+                        'emergencyContact': _emergencyContactController.text,
                       });
                     }
                   },
@@ -205,6 +228,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
     _phoneController.dispose();
     _addressController.dispose();
     _bloodTypeController.dispose();
+    _emergencyContactController.dispose();
     super.dispose();
   }
 }

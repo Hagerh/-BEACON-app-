@@ -100,6 +100,7 @@ class DatabaseHelper {
         phone TEXT,
         address TEXT,
         blood_type TEXT,
+        emergency_contact TEXT,
         device_id TEXT,
         FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
       )
@@ -347,6 +348,7 @@ class DatabaseHelper {
         u.address,
         u.blood_type,
         u.device_id,
+        u.emergency_contact,
         d.status,
         d.avatar,
         d.color
@@ -362,7 +364,7 @@ class DatabaseHelper {
     return UserProfile.fromMap(rows.first as Map<String, dynamic>);
   }
 
-  // Save or update user profile
+  // Save or update user profile// Save or update user profile
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
@@ -392,6 +394,7 @@ class DatabaseHelper {
     }
 */
     // Update or insert device info (avatar and color)
+    // Check if device exists
     final existingDevices = await db.query(
       'Devices',
       where: 'device_id = ?',
@@ -400,20 +403,36 @@ class DatabaseHelper {
     );
 
     final profileMap = profile.toMap();
+    
+    // Prepare device data
     final deviceData = {
       'device_id': profile.deviceId,
       'name': profile.name,
       'status': profile.status,
       'avatar': profile.avatarLetter,
       'color': profileMap['color'],
+  
     };
 
     if (existingDevices.isEmpty) {
+     
+      
+      // Try to find an existing network to attach to, or use a default
       final networks = await db.query('Networks', limit: 1);
+      
       if (networks.isNotEmpty) {
         deviceData['network_id'] = networks.first['network_id'];
         deviceData['is_host'] = 0;
         await db.insert('Devices', deviceData);
+      } else {
+       
+         final newNetworkId = await db.insert('Networks', {
+           'network_name': 'Local Self',
+           'status': 'Offline',
+         });
+         deviceData['network_id'] = newNetworkId;
+         deviceData['is_host'] = 0;
+         await db.insert('Devices', deviceData);
       }
     } else {
       // Update existing device

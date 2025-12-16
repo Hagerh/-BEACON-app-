@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
+
+
 
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   final P2PService p2pService;
@@ -21,7 +24,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           emit(
             NetworkDashboardLoaded(
               networkName: networkName,
-              isServer: p2pService.isHost,
+              isServer: p2pService.isHost, // .isServer to .isHost
               connectedDevices: members,
             ),
           );

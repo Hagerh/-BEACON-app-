@@ -10,6 +10,7 @@ class UserProfile {
   final String address;
   final String bloodType;
   final String deviceId; // Unique identifier  -> for P2P and Database
+  final String emergencyContact;
 
   UserProfile({
     required this.name,
@@ -21,6 +22,7 @@ class UserProfile {
     required this.address,
     required this.bloodType,
     required this.deviceId,
+    required this.emergencyContact,
   });
 
   // Parse color from hex string (e.g. #FF8A00) or int
@@ -57,6 +59,8 @@ class UserProfile {
     final address = m['address']?.toString() ?? '';
     final bloodType = m['blood_type']?.toString() ?? m['bloodType']?.toString() ?? 'N/A';
     final deviceId = m['device_id']?.toString() ?? '';
+    final emergencyContact = m['emergency_contact']?.toString() ?? '';
+    
 
     return UserProfile(
       name: name,
@@ -68,6 +72,8 @@ class UserProfile {
       address: address,
       bloodType: bloodType,
       deviceId: deviceId,
+      emergencyContact: emergencyContact,
+
     );
   }
 
@@ -81,6 +87,7 @@ class UserProfile {
       'device_id': deviceId,
       'color': _colorToHex(avatarColor),
       'avatar': avatarLetter,
+      'emergency_contact': emergencyContact,
     };
   }
 
@@ -93,6 +100,7 @@ class UserProfile {
       'address': address,
       'blood_type': bloodType,
       'device_id': deviceId,
+      'emergency_contact': emergencyContact,
     };
   }
 
@@ -103,6 +111,7 @@ class UserProfile {
     String? address,
     String? bloodType,
     Color? avatarColor,
+    String? emergencyContact,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -114,6 +123,7 @@ class UserProfile {
       address: address ?? this.address,
       bloodType: bloodType ?? this.bloodType,
       deviceId: deviceId,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
     );
   }
 }
