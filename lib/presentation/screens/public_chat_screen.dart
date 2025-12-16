@@ -10,14 +10,12 @@ import 'package:projectdemo/presentation/widgets/device_card.dart';
 import 'package:projectdemo/presentation/widgets/info_summary.dart';
 import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
+import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
 
 class PublicChatScreen extends StatefulWidget {
   final String networkName;
 
-  const PublicChatScreen({
-    super.key,
-    required this.networkName,
-  });
+  const PublicChatScreen({super.key, required this.networkName});
 
   @override
   State<PublicChatScreen> createState() => _PublicChatScreenState();
@@ -81,10 +79,7 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => QuickMessageSheet(
-        device: {
-          'name': device.name,
-          'deviceId': device.deviceId,
-        },
+        device: {'name': device.name, 'deviceId': device.deviceId},
         messages: predefinedMessages,
         onSend: (msg) {
           cubit.sendPrivateMessage(device.deviceId, msg);
@@ -102,8 +97,8 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
   void _openPrivateChat(BuildContext context, DeviceDetail device) {
     // Mark messages as read
     context.read<NetworkDashboardCubit>().markDeviceMessagesAsRead(
-          device.deviceId,
-        );
+      device.deviceId,
+    );
 
     Navigator.pushNamed(
       context,
@@ -143,13 +138,13 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
-                
+
                 if (isServer) {
                   await cubit.stopNetwork();
                 } else {
                   await cubit.leaveNetwork();
                 }
-                
+
                 // Navigate back to home
                 if (context.mounted) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
@@ -197,7 +192,10 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
             if (isServer)
               ListTile(
                 leading: const Icon(Icons.remove_circle, color: Colors.red),
-                title: const Text('Kick User', style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Kick User',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   cubit.kickUser(device.deviceId);
@@ -267,10 +265,37 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.campaign),
-            tooltip: 'Broadcast',
-            onPressed: () => _showBroadcastDialog(context),
+          BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+            builder: (context, state) {
+              final isHost = state is NetworkDashboardLoaded
+                  ? state.isServer
+                  : false;
+
+              return Row(
+                children: [
+                  if (isHost)
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      tooltip: 'Network Settings',
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<NetworkDashboardCubit>(),
+                              child: const NetworkSettingsScreen(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.campaign),
+                    tooltip: 'Broadcast',
+                    onPressed: () => _showBroadcastDialog(context),
+                  ),
+                ],
+              );
+            },
           ),
         ],
         leading: IconButton(
@@ -292,10 +317,7 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
                 children: [
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
-                  Text(
-                    "Error: ${state.message}",
-                    textAlign: TextAlign.center,
-                  ),
+                  Text("Error: ${state.message}", textAlign: TextAlign.center),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {

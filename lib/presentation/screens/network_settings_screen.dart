@@ -1,372 +1,325 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
-import 'package:projectdemo/data/models/connected_users_model.dart';
-import 'package:projectdemo/business/cubit/create_network_cubit.dart';
-import 'package:projectdemo/business/cubit/create_network_state.dart';
-import 'package:projectdemo/presentation/widgets/voice_widget.dart';
-import 'package:projectdemo/presentation/widgets/settings_card.dart';
-import 'package:projectdemo/presentation/widgets/settings_section_header.dart';
-import 'package:projectdemo/presentation/widgets/info_row.dart';
-import 'package:projectdemo/presentation/widgets/confirmation_dialog.dart';
-import 'package:projectdemo/presentation/widgets/input_dialog.dart';
-import 'package:projectdemo/presentation/widgets/empty_state.dart';
+import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
 
 class NetworkSettingsScreen extends StatelessWidget {
   const NetworkSettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<CreateNetworkCubit, CreateNetworkState>(
-      listener: (context, state) {
-        // Handle error states
-        if (state is CreateNetworkError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.alertRed,
-            ),
-          );
-          // Clear error after showing snackbar
-          context.read<CreateNetworkCubit>().clearError();
-        }
-
-        // Navigate back when network is stopped
-        if (state is CreateNetworkInitial) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Network stopped successfully'),
-              backgroundColor: AppColors.alertRed,
-            ),
-          );
-
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (context.mounted) {
-              Navigator.pop(context);
-            }
-          });
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Network Settings"),
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color.fromARGB(255, 235, 200, 200),
-                  Color.fromARGB(255, 164, 236, 246),
-                ],
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Network Settings'),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color.fromARGB(255, 235, 200, 200),
+                Color.fromARGB(255, 164, 236, 246),
+              ],
             ),
           ),
         ),
-        body: BlocBuilder<CreateNetworkCubit, CreateNetworkState>(
-          builder: (context, state) {
-            if (state is! CreateNetworkActive) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.wifi_off,
-                      size: 64,
-                      color: AppColors.textSecondary,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No active network',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
+      ),
+      body: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+        builder: (context, state) {
+          if (state is NetworkDashboardLoading ||
+              state is NetworkDashboardInitial) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildNetworkInfoCard(state, context),
-                    const SizedBox(height: 16),
-                    _buildMaxConnectionsCard(state, context),
-                    const SizedBox(height: 16),
-                    _buildConnectedUsers(state.connectedUsers, context),
-                    const SizedBox(height: 16),
-                    _buildStopButton(context),
-                  ],
-                ),
+          if (state is NetworkDashboardError) {
+            return Center(
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
               ),
             );
-          },
-        ),
-        floatingActionButton: const VoiceWidget(),
-      ),
-    );
-  }
+          }
 
-  static Widget _buildNetworkInfoCard(
-    CreateNetworkActive state,
-    BuildContext context,
-  ) {
-    return SettingsCard(
-      backgroundColor: AppColors.resourceNeed,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          if (state is! NetworkDashboardLoaded) {
+            return const SizedBox.shrink();
+          }
+
+          if (!state.isServer) {
+            return Center(
+              child: Text(
+                'Network settings are only available to the host.',
+                style: TextStyle(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          final devices = state.connectedDevices;
+          final maxConnections = state.maxConnections;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.lightGreen,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Network Active',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          InfoRow(
-            icon: Icons.label,
-            label: 'Network Name',
-            value: state.networkName,
-          ),
-          const SizedBox(height: 16),
-          InfoRow(
-            icon: Icons.people,
-            label: 'Connected Users',
-            value: '${state.connectedUsers.length} / ${state.maxConnections}',
-          ),
-          const SizedBox(height: 12),
-          const InfoRow(
-            icon: Icons.signal_wifi_4_bar,
-            label: 'Status',
-            value: 'Listening for connections...',
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildMaxConnectionsCard(
-    CreateNetworkActive state,
-    BuildContext context,
-  ) {
-    return SettingsCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SettingsSectionHeader(
-            icon: Icons.settings,
-            title: 'Network Settings',
-            iconColor: AppColors.connectionTeal,
-            textColor: AppColors.textPrimary,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Max Connections: ${state.maxConnections}',
-                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showEditMaxConnectionsDialog(context, state),
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Edit'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.connectionTeal,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _buildConnectedUsers(
-    List<ConnectedUser> connectedUsers,
-    BuildContext context,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Connected Devices:',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        connectedUsers.isEmpty
-            ? SettingsCard(
-                child: EmptyState(
-                  icon: Icons.devices,
-                  title: 'No devices connected yet',
-                  subtitle: 'Waiting for users to join...',
-                  iconColor: AppColors.textSecondary,
-                  textColor: AppColors.textSecondary,
-                ),
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: connectedUsers.length,
-                itemBuilder: (context, index) {
-                  final user = connectedUsers[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: AppColors.connectionTeal,
-                        child: Icon(Icons.person, color: AppColors.textPrimary),
-                      ),
-                      title: Text(
-                        user.name,
-                        style: TextStyle(
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state.networkName,
+                        style: const TextStyle(
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
                         ),
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Connected devices: ${devices.length}',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        maxConnections != null
+                            ? 'Max connections: $maxConnections'
+                            : 'Max connections: not limited',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.fingerprint, size: 14),
-                              const SizedBox(width: 4),
-                              Text('ID: ${user.id}'),
-                            ],
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  _editNetworkName(context, state.networkName),
+                              icon: const Icon(Icons.edit),
+                              label: const Text('Edit name'),
+                            ),
                           ),
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time, size: 14),
-                              const SizedBox(width: 4),
-                              Text('Joined: ${user.formattedJoinTime}'),
-                            ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _editMaxConnections(
+                                context,
+                                maxConnections,
+                                devices.length,
+                              ),
+                              icon: const Icon(Icons.people),
+                              label: const Text('Max connections'),
+                            ),
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Manage Devices',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (devices.isEmpty)
+                Text(
+                  'No connected devices.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                )
+              else
+                ...devices.map((d) {
+                  return Card(
+                    child: ListTile(
+                      title: Text(d.name),
+                      subtitle: Text('ID: ${d.deviceId}'),
                       trailing: IconButton(
-                        icon: Icon(
-                          Icons.remove_circle_outline,
-                          color: AppColors.alertRed,
+                        tooltip: 'Kick',
+                        icon: const Icon(
+                          Icons.remove_circle,
+                          color: Colors.red,
                         ),
-                        onPressed: () => _showDisconnectAlert(context, user),
+                        onPressed: () {
+                          context.read<NetworkDashboardCubit>().kickUser(
+                            d.deviceId,
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${d.name} has been removed'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   );
-                },
+                }),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => _confirmStopNetwork(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.alertRed,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Stop Network',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-      ],
-    );
-  }
-
-  static Widget _buildStopButton(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () => _showStopAlert(context),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.alertRed,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: const Text(
-        'Stop Network',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  static void _showEditMaxConnectionsDialog(
-    BuildContext context,
-    CreateNetworkActive state,
-  ) {
-    InputDialog.show(
+  Future<void> _confirmStopNetwork(BuildContext context) async {
+    final cubit = context.read<NetworkDashboardCubit>();
+
+    final shouldStop = await showDialog<bool>(
       context: context,
-      title: 'Edit Max Connections',
-      label: 'Max Connections',
-      hintText: 'Enter max connections',
-      initialValue: state.maxConnections.toString(),
-      keyboardType: TextInputType.number,
-      validator: (value) {
-        final newMax = int.tryParse(value ?? '');
-        if (newMax == null || newMax < 2) {
-          return 'Max connections must be at least 2';
-        }
-        return null;
-      },
-      onSave: (value) {
-        // TODO: Add method to update max connections in Cubit
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Max connections update not yet implemented'),
-            backgroundColor: AppColors.infoBlue,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Stop Network'),
+          content: const Text(
+            'Stopping the network will disconnect all users. Continue?',
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Stop', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldStop == true) {
+      await cubit.stopNetwork();
+      if (context.mounted) {
+        Navigator.of(context).pop(); // back to dashboard
+      }
+    }
+  }
+
+  Future<void> _editNetworkName(
+    BuildContext context,
+    String currentName,
+  ) async {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final controller = TextEditingController(text: currentName);
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Network Name'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Network Name',
+              hintText: 'Enter a new name',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isEmpty || value.length < 3) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Network name must be at least 3 characters.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                cubit.updateNetworkName(value);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
         );
       },
     );
   }
 
-  static void _showStopAlert(BuildContext context) {
-    final state = context.read<CreateNetworkCubit>().state;
-    final userCount = state is CreateNetworkActive
-        ? state.connectedUsers.length
-        : 0;
-
-    ConfirmationDialog.show(
-      context: context,
-      title: 'Stop Network?',
-      content:
-          'Are you sure you want to stop the network? All $userCount connected users will be disconnected.',
-      confirmText: 'Stop Network',
-      confirmColor: AppColors.alertRed,
-      icon: Icons.warning,
-      onConfirm: () {
-        context.read<CreateNetworkCubit>().stopNetwork();
-      },
+  Future<void> _editMaxConnections(
+    BuildContext context,
+    int? currentMax,
+    int currentConnections,
+  ) async {
+    final cubit = context.read<NetworkDashboardCubit>();
+    final controller = TextEditingController(
+      text: currentMax?.toString() ?? '',
     );
-  }
 
-  static void _showDisconnectAlert(BuildContext context, ConnectedUser user) {
-    ConfirmationDialog.show(
+    await showDialog<void>(
       context: context,
-      title: 'Disconnect User',
-      content: 'Are you sure you want to disconnect ${user.name}?',
-      confirmText: 'Disconnect',
-      confirmColor: AppColors.alertRed,
-      icon: Icons.person_remove,
-      onConfirm: () {
-        context.read<CreateNetworkCubit>().disconnectUser(user.id);
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Max Connections'),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Max connections',
+              hintText: 'e.g. 8',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final raw = controller.text.trim();
+                final parsed = int.tryParse(raw);
+                if (parsed == null || parsed <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Please enter a valid number greater than 0.',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                if (parsed < currentConnections) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Cannot be less than current connections ($currentConnections).',
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                cubit.updateMaxConnections(parsed);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
       },
     );
   }

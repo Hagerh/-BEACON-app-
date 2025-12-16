@@ -15,11 +15,15 @@ class NetworkDashboardLoaded extends NetworkDashboardState {
   final String networkName;
   final bool isServer;
   final List<DeviceDetail> connectedDevices;
+  final int? maxConnections;
+  final int? networkId;
 
   NetworkDashboardLoaded({
     required this.networkName,
     required this.isServer,
     required this.connectedDevices,
+    this.maxConnections,
+    this.networkId,
   });
 
   NetworkDashboardLoaded updateDevice(String deviceId, {int? unread}) {
@@ -36,6 +40,8 @@ class NetworkDashboardLoaded extends NetworkDashboardState {
       networkName: networkName,
       isServer: isServer,
       connectedDevices: updatedList,
+      maxConnections: maxConnections,
+      networkId: networkId,
     );
   }
 
@@ -43,11 +49,15 @@ class NetworkDashboardLoaded extends NetworkDashboardState {
     String? networkName,
     bool? isServer,
     List<DeviceDetail>? connectedDevices,
+    int? maxConnections,
+    int? networkId,
   }) {
     return NetworkDashboardLoaded(
       networkName: networkName ?? this.networkName,
       isServer: isServer ?? this.isServer,
       connectedDevices: connectedDevices ?? this.connectedDevices,
+      maxConnections: maxConnections ?? this.maxConnections,
+      networkId: networkId ?? this.networkId,
     );
   }
 }

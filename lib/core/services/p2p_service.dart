@@ -69,6 +69,17 @@ class P2PService {
     }
   }
 
+  /// Current maximum members allowed in this network (host side only).
+  int? get maxMembers => _maxMembers;
+
+  /// Update the maximum allowed members at runtime (host only).
+  /// This does not re-negotiate any underlying OS limits, it is an
+  /// app‑level guard enforced in `_syncMembersFromClientList`.
+  void updateMaxMembers(int newMax) {
+    if (newMax <= 0) return;
+    _maxMembers = newMax;
+  }
+
   Future<void> stopNetwork() async {
     if (isHost) await _host?.removeGroup();
     disconnect();
@@ -246,10 +257,10 @@ class P2PService {
   // ---------------- MEMBERS MANAGEMENT ------------------
 
   void _syncMembersFromClientList(List<P2pClientInfo> clients) {
-    // Check if network is full (server only)
-
-    if (isHost && clients.length > _maxMembers!) {
-      debugPrint("Network full: ${clients.length}/$_maxMembers");
+    // Check if network is full (server only, and only when a limit is set)
+    final max = _maxMembers;
+    if (isHost && max != null && clients.length > max) {
+      debugPrint("Network full: ${clients.length}/$max");
 
       // todo: Send network full message to clients trying to join
 

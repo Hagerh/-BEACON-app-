@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/connected_users_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
@@ -60,10 +61,30 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
       await _p2pService.initializeServer(currentUser);
       await _p2pService.createNetwork(name: networkName, max: maxConnections);
 
+      // Save network to database
+      final db = DatabaseHelper.instance;
+      final networkId = await db.saveNetwork(
+        networkName: networkName,
+        hostDeviceId: currentUser.deviceId,
+        status: 'Active',
+      );
+
+      // Save host device to database
+      await db.upsertDevice(
+        deviceId: currentUser.deviceId,
+        networkId: networkId,
+        name: currentUser.name,
+        status: 'Active',
+        avatar: currentUser.avatarLetter,
+        color:
+            '#${currentUser.avatarColor.value.toRadixString(16).padLeft(8, '0')}',
+        isHost: true,
+      );
+
       // Listen for member joins / leaves
       _memberSubscription = _p2pService.membersStream.listen(
         (members) {
-          _updateConnectedUsers(members);
+          _updateConnectedUsers(members, networkId);
         },
         onError: (error) {
           emit(
@@ -103,7 +124,18 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   Future<void> stopNetwork() async {
     if (state is! CreateNetworkActive) return;
 
+    final currentState = state as CreateNetworkActive;
+
     try {
+      // Update network status in database
+      final db = DatabaseHelper.instance;
+      final networkId = await db.getNetworkIdByName(currentState.networkName);
+
+      if (networkId != null) {
+        await db.updateNetworkStatus(networkId, 'Inactive');
+        await db.markNetworkDevicesOffline(networkId);
+      }
+
       // Stop P2P network
       await _p2pService.stopNetwork();
 
@@ -200,15 +232,12 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   }
 
   /// Gets the current user profile from database or creates a default one
-  ///
-  /// TODO: Device ID should come from P2P discovery or be stored persistently
-  /// in shared preferences to maintain the same ID across sessions
+  /// Uses persistent device ID that remains the same across app sessions
   Future<UserProfile> _getCurrentUserProfile() async {
     final db = DatabaseHelper.instance;
 
-    // TODO: Get device ID from P2P service when available
-    // For now, generate a temporary ID
-    final deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}';
+    // Get persistent device ID
+    final deviceId = await DeviceIdService.getDeviceId();
 
     // Try to load existing user profile from database
     UserProfile? user = await db.getUserProfile(deviceId);
@@ -236,12 +265,28 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   }
 
   // Updates connected users based on P2P service member list
-  void _updateConnectedUsers(List<dynamic> members) {
+  void _updateConnectedUsers(List<dynamic> members, int networkId) async {
     if (state is! CreateNetworkActive) return;
 
     final currentState = state as CreateNetworkActive;
+    final db = DatabaseHelper.instance;
 
-    // This is a placeholder - actual implementation depends on P2PService API
+    // Update database for each member
+    for (var member in members) {
+      final deviceId = member.deviceId ?? 'unknown';
+      final name = member.name ?? 'Unknown Device';
+
+      await db.upsertDevice(
+        deviceId: deviceId,
+        networkId: networkId,
+        name: name,
+        status: 'Active',
+        avatar: name.isNotEmpty ? name[0] : '?',
+        isHost: member.isHost ?? false,
+      );
+    }
+
+    // Convert to ConnectedUser list
     final users = members.map((member) {
       return ConnectedUser(
         id: member.deviceId ?? 'unknown',
