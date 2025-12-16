@@ -5,6 +5,12 @@ import 'package:projectdemo/data/models/connected_users_model.dart';
 import 'package:projectdemo/business/cubit/create_network_cubit.dart';
 import 'package:projectdemo/business/cubit/create_network_state.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/presentation/widgets/settings_card.dart';
+import 'package:projectdemo/presentation/widgets/settings_section_header.dart';
+import 'package:projectdemo/presentation/widgets/info_row.dart';
+import 'package:projectdemo/presentation/widgets/confirmation_dialog.dart';
+import 'package:projectdemo/presentation/widgets/input_dialog.dart';
+import 'package:projectdemo/presentation/widgets/empty_state.dart';
 
 class NetworkSettingsScreen extends StatelessWidget {
   const NetworkSettingsScreen({super.key});
@@ -110,58 +116,55 @@ class NetworkSettingsScreen extends StatelessWidget {
     CreateNetworkActive state,
     BuildContext context,
   ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: AppColors.resourceNeed,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.lightGreen,
-                    size: 24,
-                  ),
+    return SettingsCard(
+      backgroundColor: AppColors.resourceNeed,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Network Active',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                child: const Icon(
+                  Icons.check,
+                  color: Colors.lightGreen,
+                  size: 24,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow(Icons.label, 'Network Name', state.networkName),
-            const SizedBox(height: 16),
-            _buildInfoRow(Icons.tag, 'Network ID', state.networkId),
-            const SizedBox(height: 16),
-            _buildInfoRow(
-              Icons.people,
-              'Connected Users',
-              '${state.connectedUsers.length} / ${state.maxConnections}',
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(
-              Icons.signal_wifi_4_bar,
-              'Status',
-              'Listening for connections...',
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Network Active',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          InfoRow(
+            icon: Icons.label,
+            label: 'Network Name',
+            value: state.networkName,
+          ),
+          const SizedBox(height: 16),
+          InfoRow(
+            icon: Icons.people,
+            label: 'Connected Users',
+            value: '${state.connectedUsers.length} / ${state.maxConnections}',
+          ),
+          const SizedBox(height: 12),
+          const InfoRow(
+            icon: Icons.signal_wifi_4_bar,
+            label: 'Status',
+            value: 'Listening for connections...',
+          ),
+        ],
       ),
     );
   }
@@ -170,82 +173,37 @@ class NetworkSettingsScreen extends StatelessWidget {
     CreateNetworkActive state,
     BuildContext context,
   ) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.settings, color: AppColors.connectionTeal, size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  'Network Settings',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
+    return SettingsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionHeader(
+            icon: Icons.settings,
+            title: 'Network Settings',
+            iconColor: AppColors.connectionTeal,
+            textColor: AppColors.textPrimary,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Max Connections: ${state.maxConnections}',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showEditMaxConnectionsDialog(context, state),
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.connectionTeal,
+                  foregroundColor: Colors.white,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Max Connections: ${state.maxConnections}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () =>
-                      _showEditMaxConnectionsDialog(context, state),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Edit'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.connectionTeal,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
-    );
-  }
-
-  static Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 25, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            fontSize: 18,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.bold,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -266,36 +224,13 @@ class NetworkSettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         connectedUsers.isEmpty
-            ? Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.devices,
-                          size: 48,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No devices connected yet',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Waiting for users to join...',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            ? SettingsCard(
+                child: EmptyState(
+                  icon: Icons.devices,
+                  title: 'No devices connected yet',
+                  subtitle: 'Waiting for users to join...',
+                  iconColor: AppColors.textSecondary,
+                  textColor: AppColors.textSecondary,
                 ),
               )
             : ListView.builder(
@@ -376,56 +311,29 @@ class NetworkSettingsScreen extends StatelessWidget {
     BuildContext context,
     CreateNetworkActive state,
   ) {
-    final controller = TextEditingController(
-      text: state.maxConnections.toString(),
-    );
-
-    showDialog(
+    InputDialog.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Max Connections'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: 'Max Connections',
-            hintText: 'Enter max connections',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      title: 'Edit Max Connections',
+      label: 'Max Connections',
+      hintText: 'Enter max connections',
+      initialValue: state.maxConnections.toString(),
+      keyboardType: TextInputType.number,
+      validator: (value) {
+        final newMax = int.tryParse(value ?? '');
+        if (newMax == null || newMax < 2) {
+          return 'Max connections must be at least 2';
+        }
+        return null;
+      },
+      onSave: (value) {
+        // TODO: Add method to update max connections in Cubit
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Max connections update not yet implemented'),
+            backgroundColor: AppColors.infoBlue,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newMax = int.tryParse(controller.text);
-              if (newMax != null && newMax >= 2) {
-                // TODO: Add method to update max connections in Cubit
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Max connections update not yet implemented'),
-                    backgroundColor: AppColors.infoBlue,
-                  ),
-                );
-                Navigator.pop(dialogContext);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Max connections must be at least 2'),
-                    backgroundColor: AppColors.alertRed,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.connectionTeal,
-            ),
-            child: const Text('Save', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -435,62 +343,31 @@ class NetworkSettingsScreen extends StatelessWidget {
         ? state.connectedUsers.length
         : 0;
 
-    showDialog(
+    ConfirmationDialog.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Stop Network?'),
-        content: Text(
+      title: 'Stop Network?',
+      content:
           'Are you sure you want to stop the network? All $userCount connected users will be disconnected.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.read<CreateNetworkCubit>().stopNetwork();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.alertRed,
-            ),
-            child: const Text(
-              'Stop Network',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+      confirmText: 'Stop Network',
+      confirmColor: AppColors.alertRed,
+      icon: Icons.warning,
+      onConfirm: () {
+        context.read<CreateNetworkCubit>().stopNetwork();
+      },
     );
   }
 
   static void _showDisconnectAlert(BuildContext context, ConnectedUser user) {
-    showDialog(
+    ConfirmationDialog.show(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Disconnect User'),
-        content: Text('Are you sure you want to disconnect ${user.name}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.read<CreateNetworkCubit>().disconnectUser(user.id);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.alertRed,
-            ),
-            child: const Text(
-              'Disconnect',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+      title: 'Disconnect User',
+      content: 'Are you sure you want to disconnect ${user.name}?',
+      confirmText: 'Disconnect',
+      confirmColor: AppColors.alertRed,
+      icon: Icons.person_remove,
+      onConfirm: () {
+        context.read<CreateNetworkCubit>().disconnectUser(user.id);
+      },
     );
   }
 }

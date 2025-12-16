@@ -366,6 +366,9 @@ class DatabaseHelper {
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
+    // IMPORTANT: Handle Devices FIRST before Users to satisfy foreign key constraint
+    // The Users table has a foreign key on device_id that references Devices(device_id)
+    /*
     final existingUsers = await db.query(
       'Users',
       where: 'device_id = ?',
@@ -387,7 +390,7 @@ class DatabaseHelper {
         whereArgs: [profile.deviceId],
       );
     }
-
+*/
     // Update or insert device info (avatar and color)
     final existingDevices = await db.query(
       'Devices',
@@ -422,6 +425,29 @@ class DatabaseHelper {
           'avatar': profile.avatarLetter,
           'color': profileMap['color'],
         },
+        where: 'device_id = ?',
+        whereArgs: [profile.deviceId],
+      );
+    }
+
+    // NOW insert/update the user (after device exists)
+    final existingUsers = await db.query(
+      'Users',
+      where: 'device_id = ?',
+      whereArgs: [profile.deviceId],
+      limit: 1,
+    );
+
+    final userData = profile.toUserMap();
+
+    if (existingUsers.isEmpty) {
+      // Insert new user
+      await db.insert('Users', userData);
+    } else {
+      // Update existing user
+      await db.update(
+        'Users',
+        userData,
         where: 'device_id = ?',
         whereArgs: [profile.deviceId],
       );
