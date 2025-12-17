@@ -1,18 +1,14 @@
-import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
-import 'package:projectdemo/data/models/connected_users_model.dart';
-import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/create_network_state.dart';
 
-// Handles P2P network creation and connected user management
+// Handles P2P network creation
 class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   final P2PService _p2pService;
-  StreamSubscription<List<DeviceDetail>>? _memberSubscription;
 
   CreateNetworkCubit({required P2PService p2pService})
     : _p2pService = p2pService,
@@ -61,68 +57,13 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
         CreateNetworkActive(
           networkName: networkName,
           maxConnections: maxConnections,
-          connectedUsers: const [],
         ),
       );
-
-      _memberSubscription = _p2pService.membersStream.listen(_onMembersUpdated);
     } catch (e) {
       emit(
         CreateNetworkError(
           message: 'Failed to create network: $e',
           previousState: CreateNetworkInitial(),
-        ),
-      );
-    }
-  }
-
-  void _onMembersUpdated(List<DeviceDetail> members) {
-    if (state is! CreateNetworkActive) return;
-    final currentState = state as CreateNetworkActive;
-
-    final users = members
-        .map(
-          (m) => ConnectedUser(
-            id: m.deviceId,
-            name: m.name,
-            joinedAt: DateTime.now(),
-          ),
-        )
-        .toList();
-
-    emit(currentState.copyWith(connectedUsers: users));
-  }
-
-  Future<void> disconnectUser(String userId) async {
-    if (state is! CreateNetworkActive) return;
-
-    try {
-      _p2pService.kickUser(userId);
-    } catch (e) {
-      emit(
-        CreateNetworkError(
-          message: 'Failed to disconnect user: $e',
-          previousState: state,
-        ),
-      );
-    }
-  }
-
-  Future<void> stopNetwork() async {
-    if (state is! CreateNetworkActive) return;
-
-    try {
-      await _memberSubscription?.cancel();
-      _memberSubscription = null;
-
-      await _p2pService.stopNetwork();
-
-      emit(CreateNetworkInitial());
-    } catch (e) {
-      emit(
-        CreateNetworkError(
-          message: 'Failed to stop network: $e',
-          previousState: state,
         ),
       );
     }
@@ -167,17 +108,5 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
     }
 
     return user;
-  }
-
-  // Cleanup method called when cubit is closed
-  @override
-  Future<void> close() async {
-    await _memberSubscription?.cancel();
-
-    if (state is CreateNetworkActive) {
-      await _p2pService.stopNetwork();
-    }
-
-    return super.close();
   }
 }
