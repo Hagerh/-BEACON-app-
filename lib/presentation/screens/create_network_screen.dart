@@ -11,22 +11,31 @@ class CreateNetworkScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
     return BlocListener<CreateNetworkCubit, CreateNetworkState>(
       listener: (context, state) {
         // Handle error states
         if (state is CreateNetworkError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.alertRed,
-            ),
-          );
+          if (!context.mounted) return; // Prevent showing snackbar if widget is disposed
+          try {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.alertRed,
+              ),
+            );
+          } catch (e) {
+            debugPrint('Error showing error snackbar: $e');
+          }
           // Clear error after showing snackbar
           context.read<CreateNetworkCubit>().clearError();
         }
 
         // Navigate to public chat when network is created successfully
-        if (state is CreateNetworkActive) {
+        // Navigate to public chat when network is created successfully
+        if (state is CreateNetworkReady) {
+          if (!context.mounted) return;
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -38,15 +47,11 @@ class CreateNetworkScreen extends StatelessWidget {
           );
 
           // Navigate to public chat screen with the network name
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (context.mounted) {
-              Navigator.pushReplacementNamed(
-                context,
-                publicChatScreen,
-                arguments: {'networkName': state.networkName},
-              );
-            }
-          });
+          Navigator.pushReplacementNamed(
+            context,
+            publicChatScreen,
+            arguments: {'networkName': state.networkName},
+          );
         }
       },
       child: Scaffold(

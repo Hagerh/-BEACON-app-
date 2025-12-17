@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
@@ -55,8 +56,8 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
       // Initialize P2P host
       await _p2pService.initializeServer(currentUser);
-      await _p2pService.createNetwork(name: networkName, max: maxConnections);
 
+      await _p2pService.createNetwork(name: networkName, max: maxConnections);
       emit(
         CreateNetworkActive(
           networkName: networkName,
@@ -64,6 +65,9 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
           connectedUsers: const [],
         ),
       );
+      
+      // Emit one-shot state for navigation
+      emit(CreateNetworkReady(networkName: networkName));
 
       _memberSubscription = _p2pService.membersStream.listen(_onMembersUpdated);
     } catch (e) {
@@ -77,7 +81,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   }
 
   void _onMembersUpdated(List<DeviceDetail> members) {
-    if (state is! CreateNetworkActive) return;
+    if (isClosed || state is! CreateNetworkActive) return; 
     final currentState = state as CreateNetworkActive;
 
     final users = members

@@ -18,6 +18,13 @@ class CreateNetworkStarting extends CreateNetworkState {
   });
 }
 
+// One-shot state for navigation
+class CreateNetworkReady extends CreateNetworkState {
+  final String networkName;
+
+  CreateNetworkReady({required this.networkName});
+}
+
 // Contains network info and list of connected users
 class CreateNetworkActive extends CreateNetworkState {
   final String networkName;
