@@ -9,7 +9,7 @@ import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
-import 'package:projectdemo/presentation/screens/public_chat_screen.dart';
+import 'package:projectdemo/presentation/screens/network_dashboard_screen.dart';
 import 'package:projectdemo/presentation/screens/private_chat_screen.dart';
 import 'package:projectdemo/presentation/screens/create_network_screen.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
