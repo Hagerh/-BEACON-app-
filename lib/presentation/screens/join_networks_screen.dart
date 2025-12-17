@@ -4,6 +4,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery_cubit.dart';
 import 'package:projectdemo/business/cubit/network_discovery_state.dart';
+import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
 class Joinnetworkscreen extends StatefulWidget {
@@ -74,10 +75,12 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
             child: BlocConsumer<NetworkCubit, NetworkState>(
               listener: (context, state) {
                 if (state is NetworkConnected) {
-                  // Navigate to dashboard after successful connection
+                  // Navigate to public chat after successful connection
+                  if (!context.mounted) return;
+                  
                   Navigator.pushReplacementNamed(
                     context,
-                    '/dashboard',
+                    publicChatScreen,
                     arguments: {'device': state.device},
                   );
                 } else if (state is NetworkError) {
