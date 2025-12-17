@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
@@ -9,6 +10,7 @@ import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   final P2PService p2pService;
   StreamSubscription<List<DeviceDetail>>? _membersSubscription;
+  StreamSubscription? _messagesSubscription;
 
   NetworkDashboardCubit({required this.p2pService})
     : super(NetworkDashboardInitial());
@@ -76,6 +78,18 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           emit(NetworkDashboardError('Connection lost: $error'));
         },
       );
+
+      // Listen to incoming messages
+      _messagesSubscription = p2pService.messagesStream.listen(
+        (message) {
+          debugPrint('📨 Received message: ${message.text}');
+          // In a real app, you'd update the state to show this message or increment unread count
+          // For now, just log it to verify messages are working
+        },
+        onError: (error) {
+          debugPrint('❌ Message stream error: $error');
+        },
+      );
     } catch (e) {
       emit(NetworkDashboardError('Failed to load dashboard: $e'));
     }
@@ -85,6 +99,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   void stopListening() {
     _membersSubscription?.cancel();
     _membersSubscription = null;
+    _messagesSubscription?.cancel();
+    _messagesSubscription = null;
   }
 
   // Mark messages from a device as read
@@ -196,6 +212,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   @override
   Future<void> close() {
     _membersSubscription?.cancel();
+    _messagesSubscription?.cancel();
     return super.close();
   }
 }
