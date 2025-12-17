@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:projectdemo/data/models/connected_users_model.dart';
 
 @immutable
 abstract class CreateNetworkState {}
@@ -18,38 +17,15 @@ class CreateNetworkStarting extends CreateNetworkState {
   });
 }
 
-// One-shot state for navigation
-class CreateNetworkReady extends CreateNetworkState {
-  final String networkName;
-
-  CreateNetworkReady({required this.networkName});
-}
-
-// Contains network info and list of connected users
+// Contains network info
 class CreateNetworkActive extends CreateNetworkState {
   final String networkName;
   final int maxConnections;
-  final List<ConnectedUser> connectedUsers;
 
   CreateNetworkActive({
     required this.networkName,
     required this.maxConnections,
-    required this.connectedUsers,
   });
-
-  // Creates a copy with updated user list, used when users join or leave the network
-  CreateNetworkActive copyWith({List<ConnectedUser>? connectedUsers}) {
-    return CreateNetworkActive(
-      networkName: networkName,
-      maxConnections: maxConnections,
-      connectedUsers: connectedUsers ?? this.connectedUsers,
-    );
-  }
-
-  // Connection count getter
-  int get currentConnections => connectedUsers.length;
-
-  bool get isFull => connectedUsers.length >= maxConnections;
 }
 
 // Error state when network creation or management fails

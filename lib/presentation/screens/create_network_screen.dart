@@ -155,86 +155,74 @@ class _NetworkSetupFormState extends State<_NetworkSetupForm> {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Row(
+                Column(
                   children: [
-                    const SizedBox(height: 20),
-                    Expanded(
-                      flex: 3,
-                      child: TextField(
-                        controller: _networkNameController,
-                        decoration: InputDecoration(
-                          labelText: 'Network Name',
-                          hintText: 'Enter a name for your network',
-                          prefixIcon: const Icon(Icons.label),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.secondaryBackground,
+                    TextField(
+                      controller: _networkNameController,
+                      decoration: InputDecoration(
+                        labelText: 'Network Name',
+                        hintText: 'Enter a name for your network',
+                        prefixIcon: const Icon(Icons.label),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        filled: true,
+                        fillColor: AppColors.secondaryBackground,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: _networkMaxConnectionsController,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Max Connections',
-                          prefixIcon: const Icon(Icons.people),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          filled: true,
-                          fillColor: AppColors.secondaryBackground,
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _networkMaxConnectionsController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Max Connections',
+                        prefixIcon: const Icon(Icons.people),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        filled: true,
+                        fillColor: AppColors.secondaryBackground,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.infoBlue.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.infoBlue),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.infoBlue.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.infoBlue),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: AppColors.textPrimary,
+                        size: 20,
                       ),
-                      child: Row(
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: AppColors.textPrimary,
-                            size: 20,
+                          Text(
+                            'You will be the host of this network.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Column(
-                            children: [
-                              Text(
-                                'You will be the host of this network.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              Text(
-                                'Other users can join your network.',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            'Other users can join your network.',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -245,7 +233,7 @@ class _NetworkSetupFormState extends State<_NetworkSetupForm> {
           onPressed: widget.isStarting ? null : _handleStart,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.alertRed,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -263,19 +251,29 @@ class _NetworkSetupFormState extends State<_NetworkSetupForm> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      'Starting Network...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'Starting Network...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ],
                 )
-              : Text(
-                  'Start Network',
-                  style: TextStyle(fontSize: 16, color: AppColors.borderLight),
+              : Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Text(
+                    'Start Network',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.borderLight,
+                    ),
+                  ),
                 ),
         ),
       ],
