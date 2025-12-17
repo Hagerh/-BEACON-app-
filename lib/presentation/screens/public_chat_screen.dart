@@ -4,6 +4,8 @@ import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
 import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
+import 'package:projectdemo/data/models/device_model.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import 'package:projectdemo/presentation/widgets/device_card.dart';
@@ -22,13 +24,37 @@ class PublicChatScreen extends StatefulWidget {
 }
 
 class _PublicChatScreenState extends State<PublicChatScreen> {
+  String? _localSummary;
+
   @override
   void initState() {
     super.initState();
     // Start listening to members stream
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<NetworkDashboardCubit>().startListening(widget.networkName);
+      _loadLocalNetworkSummary();
     });
+  }
+
+  Future<void> _loadLocalNetworkSummary() async {
+    try {
+      final db = DatabaseHelper.instance;
+      final network = await db.getNetworkByName(widget.networkName);
+      if (network == null) return;
+      final nid = network['network_id'] as int?;
+      if (nid == null) return;
+
+      final summaries = await db.fetchNetworkSummaries();
+      final match = summaries.firstWhere(
+        (d) => d.id == nid.toString(),
+        orElse: () => Device(id: '', lastSeen: '', status: '', connectors: 0),
+      );
+
+      if (match.id.isNotEmpty) {
+        _localSummary = 'Last seen ${match.lastSeen} • ${match.connectors} devices';
+        if (mounted) setState(() {});
+      }
+    } catch (_) {}
   }
 
   @override
@@ -100,6 +126,8 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
       device.deviceId,
     );
 
+    final dashboardState = context.read<NetworkDashboardCubit>().state;
+
     Navigator.pushNamed(
       context,
       chatScreen,
@@ -109,6 +137,7 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
         'color': device.color,
         'status': device.status,
         'deviceId': device.deviceId,
+        'networkId': dashboardState is NetworkDashboardLoaded ? dashboardState.networkId : null,
       },
     );
   }
@@ -223,7 +252,17 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
             if (state is NetworkDashboardLoaded) {
               return Row(
                 children: [
-                  Text(state.networkName),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(state.networkName),
+                      if (_localSummary != null)
+                        Text(
+                          _localSummary!,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                    ],
+                  ),
                   const SizedBox(width: 8),
                   if (state.isServer)
                     Container(

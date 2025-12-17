@@ -109,6 +109,8 @@ class MyApp extends StatelessWidget {
               recipientName: name,
               recipientDeviceId: deviceId,
               recipientStatus: status,
+              networkId: networkId,
+              currentDeviceId: currentDeviceId,
             ),
             child: PrivatechatScreen(),
           );

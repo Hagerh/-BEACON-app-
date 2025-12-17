@@ -48,7 +48,7 @@ class Message {
     final now = DateTime.now();
     return {
       if (messageId != null) 'message_id': messageId,
-      'network_id': networkId ?? 1,
+      if (networkId != null) 'network_id': networkId,
       'sender_device_id': senderDeviceId,
       'receiver_device_id': receiverDeviceId,
       'message_content': text,

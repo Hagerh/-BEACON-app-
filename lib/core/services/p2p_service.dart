@@ -7,6 +7,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
 
 class P2PService {
   FlutterP2pHost? _host;
@@ -151,24 +152,28 @@ class P2PService {
 
   // ---------------- HIGH-LEVEL SEND API ------------------
 
-  void sendBroadcast(String text) {
-    _sendToAll({
+  void sendBroadcast(String text, {int? localMessageId}) {
+    final Map<String, dynamic> pkt = {
       "type": "broadcast",
       "from": currentUser!.deviceId,
       "to": "ALL",
       "message": text,
       "senderName": currentUser!.name,
-    });
+    };
+    if (localMessageId != null) pkt['mid'] = localMessageId;
+    _sendToAll(pkt);
   }
 
-  void sendPrivate(String receiverId, String text) {
-    _sendToOne(receiverId, {
+  void sendPrivate(String receiverId, String text, {int? localMessageId}) {
+    final Map<String, dynamic> pkt = {
       "type": "private",
       "from": currentUser!.deviceId,
       "to": receiverId,
       "message": text,
       "senderName": currentUser!.name,
-    });
+    };
+    if (localMessageId != null) pkt['mid'] = localMessageId;
+    _sendToOne(receiverId, pkt);
   }
 
   void kickUser(String userId) {
@@ -204,7 +209,7 @@ class P2PService {
 
   // ---------------- RECEIVING PACKETS ------------------
 
-  void _handleIncomingPacket(String raw) {
+  Future<void> _handleIncomingPacket(String raw) async {
     try {
       Map<String, dynamic> data = jsonDecode(raw);
 
@@ -216,22 +221,60 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              //senderName: data["senderName"],
+              senderDeviceId: data["from"]?.toString(),
             ),
           );
           break;
 
         case "private":
+          // Only deliver if this client is the intended recipient
           if (data["to"] == currentUser!.deviceId) {
+            final senderId = data["from"]?.toString();
+            final mid = data['mid'] as int?;
+
+            // Persist unread count for sender so UI can display unread badges
+            if (senderId != null) {
+              try {
+                DatabaseHelper.instance.incrementDeviceUnread(senderId);
+              } catch (_) {}
+            }
+
+            // Send delivery ACK back to sender if they provided a message id
+            if (mid != null && senderId != null) {
+              _sendToOne(senderId, {
+                'type': 'ack',
+                'mid': mid,
+                'from': currentUser!.deviceId,
+                'to': senderId,
+              });
+            }
+
             _messagesController.add(
               Message(
                 text: data["message"],
                 isMine: false,
                 time: TimeOfDay.now(),
                 isDelivered: true,
-                //senderName: data["senderName"],
+                senderDeviceId: senderId,
+                receiverDeviceId: data["to"]?.toString(),
               ),
             );
+          }
+          break;
+
+        case 'ack':
+          // Received an ack for a previously sent message
+          try {
+            final mid = data['mid'];
+            if (mid != null) {
+              // mark message as delivered in DB
+              final id = mid is int ? mid : int.tryParse(mid.toString());
+              if (id != null) {
+                await DatabaseHelper.instance.updateMessageDelivery(id, true);
+              }
+            }
+          } catch (e) {
+            debugPrint('Failed to process ack: $e');
           }
           break;
 
@@ -272,15 +315,13 @@ class P2PService {
     for (var client in clients) {
       _members.add(
         DeviceDetail(
-          name: client.username ?? 'Unknown',
+          name: client.username,
           deviceId: client.id,
           status: "Active",
           unread: 0,
           signalStrength: 100,
           distance: '--',
-          avatar: (client.username?.isNotEmpty ?? false)
-              ? client.username![0]
-              : '?',
+          avatar: client.username.isNotEmpty ? client.username[0] : '?',
           color: client.isHost ? Colors.blue : Colors.green,
         ),
       );
