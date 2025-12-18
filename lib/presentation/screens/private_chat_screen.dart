@@ -119,26 +119,6 @@ class PrivatechatScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            color: AppColors.alertRed,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.shield, size: 16, color: AppColors.alertRed),
-                const SizedBox(width: 8),
-                const Text(
-                  'Emergency Mode: Messages are encrypted',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           Expanded(
             child: BlocBuilder<PrivateChatCubit, PrivateChatState>(
               builder: (context, state) {
@@ -160,13 +140,7 @@ class PrivatechatScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.secondaryBackground,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black,
-                  blurRadius: 4,
-                  offset: const Offset(0, -2),
-                ),
-              ],
+
             ),
             child: SafeArea(
               child: Row(
