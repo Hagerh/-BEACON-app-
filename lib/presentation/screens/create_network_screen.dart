@@ -16,42 +16,52 @@ class CreateNetworkScreen extends StatelessWidget {
       listener: (context, state) {
         // Handle error states
         if (state is CreateNetworkError) {
-          if (!context.mounted) return; // Prevent showing snackbar if widget is disposed
-          try {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: AppColors.alertRed,
-              ),
-            );
-          } catch (e) {
-            debugPrint('Error showing error snackbar: $e');
-          }
-          // Clear error after showing snackbar
+          // Schedule the snackbar to avoid unsafe ancestor lookups if the widget is being disposed
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.alertRed,
+                ),
+              );
+            } catch (e) {
+              debugPrint('Error showing error snackbar: $e');
+            }
+          });
+
+          // Clear error after attempting to show snackbar
           context.read<CreateNetworkCubit>().clearError();
         }
 
         // Navigate to public chat when network is created successfully
         // Navigate to public chat when network is created successfully
         if (state is CreateNetworkActive) {
-          if (!context.mounted) return;
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Network "${state.networkName}" created successfully!',
-              ),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          // Schedule UI side-effects to the next frame to avoid doing ancestor lookups while
+          // this widget might be deactivating (prevents the "deactivated widget" error).
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            try {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                SnackBar(
+                  content: Text('Network "${state.networkName}" created successfully!'),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            } catch (e) {
+              debugPrint('Error showing success snackbar: $e');
+            }
 
-          // Navigate to public chat screen with the network name
-          Navigator.pushReplacementNamed(
-            context,
-            networkDashboardScreen,
-            arguments: {'networkName': state.networkName},
-          );
+            // Navigate safely if a Navigator is available
+            try {
+              Navigator.maybeOf(context)?.pushReplacementNamed(
+                networkDashboardScreen,
+                arguments: {'networkName': state.networkName},
+              );
+            } catch (e) {
+              debugPrint('Error during navigation after network create: $e');
+            }
+          });
         }
       },
       child: Scaffold(
