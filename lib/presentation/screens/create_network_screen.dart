@@ -33,7 +33,7 @@ class CreateNetworkScreen extends StatelessWidget {
 
         // Navigate to public chat when network is created successfully
         // Navigate to public chat when network is created successfully
-        if (state is CreateNetworkReady) {
+        if (state is CreateNetworkActive) {
           if (!context.mounted) return;
           
           ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +49,7 @@ class CreateNetworkScreen extends StatelessWidget {
           // Navigate to public chat screen with the network name
           Navigator.pushReplacementNamed(
             context,
-            publicChatScreen,
+            networkDashboardScreen,
             arguments: {'networkName': state.networkName},
           );
         }

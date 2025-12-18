@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
             child: const ProfileScreen(),
           );
         },
-        publicChatScreen: (context) {
+        networkDashboardScreen: (context) {
           final networkData =
               ModalRoute.of(context)?.settings.arguments
                   as Map<String, dynamic>?;
@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
 
           return BlocProvider(
             create: (context) => NetworkDashboardCubit(p2pService: p2pService),
-            child: PublicChatScreen(networkName: networkName),
+            child: NetworkDashboardScreen(networkName: networkName),
           );
         },
         chatScreen: (context) {

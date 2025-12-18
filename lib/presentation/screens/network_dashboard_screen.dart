@@ -12,16 +12,16 @@ import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
 
-class PublicChatScreen extends StatefulWidget {
+class NetworkDashboardScreen extends StatefulWidget {
   final String networkName;
 
-  const PublicChatScreen({super.key, required this.networkName});
+  const NetworkDashboardScreen({super.key, required this.networkName});
 
   @override
-  State<PublicChatScreen> createState() => _PublicChatScreenState();
+  State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();
 }
 
-class _PublicChatScreenState extends State<PublicChatScreen> {
+class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   @override
   void initState() {
     super.initState();

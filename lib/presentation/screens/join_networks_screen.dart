@@ -80,7 +80,7 @@ class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
                   
                   Navigator.pushReplacementNamed(
                     context,
-                    publicChatScreen,
+                    networkDashboardScreen,
                     arguments: {'device': state.device},
                   );
                 } else if (state is NetworkError) {
