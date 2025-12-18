@@ -166,24 +166,14 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     if (state is! NetworkDashboardLoaded) return;
     final current = state as NetworkDashboardLoaded;
 
-    // Only allow host to stop network
-    if (!current.isServer) {
-      emit(NetworkDashboardError('Only the host can stop the network'));
-      return;
-    }
+    // Host only
+    if (!current.isServer) return;
 
     try {
-      // Get current device ID for database cleanup
-      final deviceId = await DeviceIdService.getDeviceId();
-      final db = DatabaseHelper.instance;
 
       // Stop the P2P network
       await p2pService.stopNetwork();
-
-      // Clean up database - delete device (which will cascade delete network if host)
-      await db.deleteDevice(deviceId);
-
-      stopListening();
+      leaveNetwork();
 
       //go back to landing screen
       //Navigator.pushReplacementNamed(context, landingScreen);
@@ -217,8 +207,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     if (!current.isServer) return;
 
     // Validation
-    if (max <= 2) {
-      emit(NetworkDashboardError('Max connections must be greater than 2'));
+    if (max < 2) {
+      emit(NetworkDashboardError('Max connections must at least be 2.'));
       return;
     }
 
