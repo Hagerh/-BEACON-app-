@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/foundation.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
-import 'package:projectdemo/data/models/message_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
 
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
@@ -142,24 +140,19 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         },
       );
 
-      // Listen to incoming messages to refresh the device unread counts in UI 
-     /* _messagesSubscription = p2pService.messagesStream.listen((message) async {
-        try {
-          final s = state;
-          if (s is NetworkDashboardLoaded && s.networkId != null) {
-            final db = DatabaseHelper.instance;
-            // Refresh devices from DB which may have updated unread counts
-            final devices = await db.getDevicesByNetworkId(s.networkId!);
-            emit(s.copyWith(connectedDevices: devices));
-          }
-        } catch (_) {}
-      });*/
-      // Listen to incoming messages
+      // Listen to incoming messages; refresh device unread counts and log
       _messagesSubscription = p2pService.messagesStream.listen(
-        (message) {
+        (message) async {
           debugPrint('📨 Received message: ${message.text}');
-          // In a real app, you'd update the state to show this message or increment unread count
-          // For now, just log it to verify messages are working
+          try {
+            final s = state;
+            if (s is NetworkDashboardLoaded && s.networkId != null) {
+              final db = DatabaseHelper.instance;
+              // Refresh devices from DB which may have updated unread counts
+              final devices = await db.getDevicesByNetworkId(s.networkId!);
+              emit(s.copyWith(connectedDevices: devices));
+            }
+          } catch (_) {}
         },
         onError: (error) {
           debugPrint('❌ Message stream error: $error');
@@ -303,9 +296,13 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           }
         } catch (_) {}
       }
-      //stopListening();
-      //todo: go back to discovery screen
-      leaveNetwork();//Check Database Function 
+
+      // Ensure P2P cleanup for all participants and stop listening locally.
+      try {
+        await p2pService.leaveNetwork(); // client-side disconnect (no-op for host)
+      } catch (_) {}
+
+      stopListening();
 
       //go back to landing screen
       //Navigator.pushReplacementNamed(context, landingScreen);
