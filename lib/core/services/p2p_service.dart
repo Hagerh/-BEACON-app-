@@ -155,6 +155,16 @@ class P2PService {
 
       _syncMembersFromClientList(clients);
     });
+
+    // Wait for connection to be established (members list updated)
+    try {
+      await membersStream.firstWhere(
+        (members) => members.isNotEmpty,
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      disconnect();
+      throw Exception('Connection timed out');
+    }
   }
 
   Future<void> leaveNetwork() async {
