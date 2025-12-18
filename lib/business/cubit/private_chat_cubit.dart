@@ -10,6 +10,7 @@ import 'package:projectdemo/business/cubit/private_chat_state.dart';
 class PrivateChatCubit extends Cubit<PrivateChatState> {
   final P2PService p2pService;
   StreamSubscription<Message>? _messageSubscription;
+  StreamSubscription<DeliveryUpdate>? _deliverySubscription;
 
   /// Optionally provide [networkId] and [currentDeviceId] so messages can be persisted.
   PrivateChatCubit({
@@ -31,14 +32,26 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
        ) {
     _loadHistory();
     _startListeningToMessages();
+
+    // Listen for delivery ACKs and update UI state
+    _deliverySubscription = p2pService.deliveryStream.listen((update) {
+      _handleDeliveryUpdate(update);
+    });
   }
 
   // Start listening to incoming messages from P2P service
   void _startListeningToMessages() {
     _messageSubscription = p2pService.messagesStream.listen(
-      (message) {
-        _receiveMessage(message);
-        _persistIncomingMessage(message);
+      (message) async {
+        try {
+          final persisted = await _persistIncomingMessage(message);
+
+          // Add the persisted message (with messageId) to state
+          _receiveMessage(persisted);
+        } catch (e) {
+          // If persistence failed, still show message without id
+          _receiveMessage(message);
+        }
       },
       onError: (error) {
         print('Error receiving message: $error');
@@ -56,29 +69,24 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       isDelivered: false, // Will be set to true when ACK arrives
     );
 
-    final updatedMessages = List<Message>.from(state.messages)..add(newMessage);
-
-    emit(state.copyWith(messages: updatedMessages));
-
     try {
       // Persist outgoing message first so we have a local message id to send
       final localId = await _persistOutgoingMessage(newMessage);
 
+      if (localId == -1) {
+        // Persistence failed, add message without id so user still sees it
+        final updatedMessages = List<Message>.from(state.messages)..add(newMessage);
+        emit(state.copyWith(messages: updatedMessages));
+        return;
+      }
+
+      // Add persisted message (with id) to UI
+      final saved = newMessage.copyWith(messageId: localId);
+      final updatedMessages = List<Message>.from(state.messages)..add(saved);
+      emit(state.copyWith(messages: updatedMessages));
+
       // Send via P2P service and include local message id so recipient can ACK
       p2pService.sendPrivate(state.recipientDeviceId, text, localMessageId: localId);
-
-      // Optimistically mark delivered in UI after a short delay (ACK will update DB for real)
-      Future.delayed(const Duration(milliseconds: 300), () {
-        final deliveredMessage = newMessage.copyWith(isDelivered: true);
-
-        final index = updatedMessages.length - 1;
-
-        if (index >= 0 && index < updatedMessages.length) {
-          updatedMessages[index] = deliveredMessage;
-
-          emit(state.copyWith(messages: List.from(updatedMessages)));
-        }
-      });
     } catch (e) {
       print('Failed to send message: $e');
 
@@ -123,12 +131,12 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
     }
   }
 
-  Future<void> _persistIncomingMessage(Message message) async {
+  Future<Message> _persistIncomingMessage(Message message) async {
     try {
       final db = DatabaseHelper.instance;
-      if (state.networkId == null) return;
+      if (state.networkId == null) return message;
 
-      await db.insertMessage(
+      final id = await db.insertMessage(
         networkId: state.networkId!,
         senderDeviceId: message.senderDeviceId,
         receiverDeviceId: message.receiverDeviceId ?? state.currentDeviceId,
@@ -136,8 +144,11 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         isMine: message.isMine,
         isDelivered: message.isDelivered,
       );
+
+      return message.copyWith(messageId: id);
     } catch (e) {
       print('Failed to persist incoming message: $e');
+      return message;
     }
   }
 
@@ -166,13 +177,27 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
 
   void stopListening() {
     _messageSubscription?.cancel();
+    _deliverySubscription?.cancel();
 
     _messageSubscription = null;
+    _deliverySubscription = null;
+  }
+
+  void _handleDeliveryUpdate(DeliveryUpdate update) {
+    final index = state.messages.indexWhere((m) => m.messageId == update.messageId);
+    if (index == -1) return;
+
+    final updated = List<Message>.from(state.messages);
+    final msg = updated[index].copyWith(isDelivered: update.delivered);
+    updated[index] = msg;
+
+    emit(state.copyWith(messages: updated));
   }
 
   @override
   Future<void> close() {
     _messageSubscription?.cancel();
+    _deliverySubscription?.cancel();
 
     return super.close();
   }

@@ -9,6 +9,13 @@ import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/data/models/message_model.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 
+// Event emitted when a local message is marked delivered (ACK received)
+class DeliveryUpdate {
+  final int messageId;
+  final bool delivered;
+  DeliveryUpdate(this.messageId, this.delivered);
+}
+
 class P2PService {
   FlutterP2pHost? _host;
   FlutterP2pClient? _client;
@@ -32,6 +39,18 @@ class P2PService {
   // Chat messages
   final _messagesController = StreamController<Message>.broadcast();
   Stream<Message> get messagesStream => _messagesController.stream;
+
+  // Delivery ACK notifications
+  // Emits DeliveryUpdate when a message is marked delivered
+  final _deliveryController = StreamController<DeliveryUpdate>.broadcast();
+  Stream<DeliveryUpdate> get deliveryStream => _deliveryController.stream;
+
+  // Lightweight delivery update model
+  // messageId: local DB message id
+  // delivered: whether message was delivered
+  // Note: kept in this file for brevity; can be moved to a shared models file if needed
+  
+  // DeliveryUpdate class defined below to avoid top-level changes
 
   // ---------------- SERVER METHODS ------------------
 
@@ -271,6 +290,13 @@ class P2PService {
               final id = mid is int ? mid : int.tryParse(mid.toString());
               if (id != null) {
                 await DatabaseHelper.instance.updateMessageDelivery(id, true);
+
+                // Notify listeners (cubits) that this message was delivered
+                try {
+                  if (!_deliveryController.isClosed) {
+                    _deliveryController.add(DeliveryUpdate(id, true));
+                  }
+                } catch (_) {}
               }
             }
           } catch (e) {
@@ -358,6 +384,7 @@ class P2PService {
     if (!_discoveryController.isClosed) _discoveryController.close();
     if (!_membersController.isClosed) _membersController.close();
     if (!_messagesController.isClosed) _messagesController.close();
+    if (!_deliveryController.isClosed) _deliveryController.close();
 
     _host?.dispose();
     _client?.dispose();
