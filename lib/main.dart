@@ -9,7 +9,7 @@ import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
-import 'package:projectdemo/presentation/screens/public_chat_screen.dart';
+import 'package:projectdemo/presentation/screens/network_dashboard_screen.dart';
 import 'package:projectdemo/presentation/screens/private_chat_screen.dart';
 import 'package:projectdemo/presentation/screens/create_network_screen.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
             child: const ProfileScreen(),
           );
         },
-        publicChatScreen: (context) {
+        networkDashboardScreen: (context) {
           final networkData =
               ModalRoute.of(context)?.settings.arguments
                   as Map<String, dynamic>?;
@@ -90,7 +90,7 @@ class MyApp extends StatelessWidget {
 
           return BlocProvider(
             create: (context) => NetworkDashboardCubit(p2pService: p2pService),
-            child: PublicChatScreen(networkName: networkName),
+            child: NetworkDashboardScreen(networkName: networkName),
           );
         },
         chatScreen: (context) {

@@ -14,18 +14,17 @@ import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
 
-class PublicChatScreen extends StatefulWidget {
+class NetworkDashboardScreen extends StatefulWidget {
   final String networkName;
 
-  const PublicChatScreen({super.key, required this.networkName});
+  const NetworkDashboardScreen({super.key, required this.networkName});
 
   @override
-  State<PublicChatScreen> createState() => _PublicChatScreenState();
+  State<NetworkDashboardScreen> createState() => _NetworkDashboardScreenState();
 }
 
-class _PublicChatScreenState extends State<PublicChatScreen> {
+class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   String? _localSummary;
-
   @override
   void initState() {
     super.initState();
@@ -147,16 +146,53 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
     final state = cubit.state;
     final isServer = state is NetworkDashboardLoaded ? state.isServer : false;
 
+    // Host cannot leave via back button - must use Settings -> Stop Network
+    if (isServer) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Cannot Leave Network"),
+            content: const Text(
+              "As the host, you cannot leave the network as the network will be stopped.\n\n"
+              "To stop the network, please use the Settings button and select 'Stop Network'.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text("OK"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // Navigate to settings screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: cubit,
+                        child: const NetworkSettingsScreen(),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text("Go to Settings"),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+
+    // Client can leave via back button
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(isServer ? "Stop Network" : "Leave Network"),
-          content: Text(
-            isServer
-                ? "Are you sure you want to stop the network? All users will be disconnected."
-                : "Are you sure you want to leave the network?",
-          ),
+          title: const Text("Leave Network"),
+          content: const Text("Are you sure you want to leave the network?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -168,21 +204,14 @@ class _PublicChatScreenState extends State<PublicChatScreen> {
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
 
-                if (isServer) {
-                  await cubit.stopNetwork();
-                } else {
-                  await cubit.leaveNetwork();
-                }
+                await cubit.leaveNetwork();
 
                 // Navigate back to home
                 if (context.mounted) {
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 }
               },
-              child: Text(
-                isServer ? "Stop" : "Leave",
-                style: const TextStyle(color: Colors.red),
-              ),
+              child: const Text("Leave", style: TextStyle(color: Colors.red)),
             ),
           ],
         );

@@ -6,11 +6,13 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery_state.dart';
+import 'package:flutter/foundation.dart';
 
 
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;
   StreamSubscription? _discoverySubscription;
+  //StreamSubscription? _membersSubscription;
 
   NetworkCubit({required this.p2pService}) : super(NetworkInitial());
 
@@ -58,19 +60,46 @@ class NetworkCubit extends Cubit<NetworkState> {
       // Connect to the selected device
       await p2pService.connectToServer(device);
 
-      // Wait briefly for connection to establish
-      await Future.delayed(const Duration(milliseconds: 500));
-
       emit(NetworkConnected(device: device));
+
     } catch (e) {
       emit(NetworkError('Failed to connect: $e'));
     }
+      // Listen for successful connection via members stream
+      // Cancel any existing subscription first
+      /*await _membersSubscription?.cancel();
+      
+      _membersSubscription = p2pService.membersStream.listen((members) {
+        if (isClosed) return; // Guard against emit after close
+        //debugPrint('🥹DEBUG: Members list updated (${members.length})');
+        if (members.isNotEmpty && state is NetworkConnecting) {
+          debugPrint('🥹DEBUG: Members list updated (${members.length}), emitting NetworkConnected');
+          emit(NetworkConnected(device: device));
+        }
+      });
+    } on TimeoutException catch (e) {
+      debugPrint('⚠️ Connection timeout: $e');
+      await _membersSubscription?.cancel();
+      _membersSubscription = null;
+      emit(NetworkError(
+        'Connection timed out. Please try again:\n'
+        '• Make sure both devices are close together\n'
+        '• Check Bluetooth is enabled on both devices\n'
+        '• Try unpairing the devices in Bluetooth settings first'
+      ));
+    } catch (e) {
+      debugPrint('❌ Connection error: $e');
+      await _membersSubscription?.cancel();
+      _membersSubscription = null;
+      emit(NetworkError('Failed to connect: $e'));
+    } */
   }
 
   @override
   Future<void> close() {
-    // Cancel discovery subscription on close
+    // Cancel all subscriptions on close
     _discoverySubscription?.cancel();
+    //_membersSubscription?.cancel();
     return super.close();
   }
 }

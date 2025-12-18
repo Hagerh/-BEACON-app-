@@ -51,7 +51,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
       // Initialize P2P host
       await _p2pService.initializeServer(currentUser);
-      await _p2pService.createNetwork(name: networkName, max: maxConnections);
 
       // Persist network and host device in local DB
       try {
@@ -72,6 +71,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
         );
       } catch (_) {}
 
+      await _p2pService.createNetwork(name: networkName, max: maxConnections);
       emit(
         CreateNetworkActive(
           networkName: networkName,

@@ -59,25 +59,25 @@ class P2PService {
       isHost = true;
       currentUser = me;
 
-      // Initialize P2P host
       _host = FlutterP2pHost();
+
       await _host!.initialize();
+
       await _checkPermissions(_host!);
 
-      // Listen for incoming packets
       _host!.streamReceivedTexts().listen(_handleIncomingPacket);
 
-      // Listen to client list changes (automatic member management)
       _host!.streamClientList().listen((clients) {
         _syncMembersFromClientList(clients);
       });
     } catch (e) {
-      debugPrint("Failed to initialize server: $e");
+      debugPrint("❌ Failed to initialize server at some step: $e");
       rethrow;
     }
   }
 
-  Future<void> createNetwork({required String name, required int max}) async { //todo name?
+  Future<void> createNetwork({required String name, required int max}) async {
+    //todo name?
     try {
       _maxMembers = max;
 
@@ -139,15 +139,20 @@ class P2PService {
     _discoveryController.add([]);
   }
 
- Future<void> connectToServer(BleDiscoveredDevice device) async {
+  Future<void> connectToServer(BleDiscoveredDevice device) async {
     // Stop scanning before connecting
     await _client!.stopScan();
 
-    // Connect to the server
-    await _client!.connectWithDevice(device);
+    _client!.connectWithDevice(device);
+    // Debounce state
+    int lastClientCount = -1;
 
     // Listen to client list changes (automatic member management)
     _client!.streamClientList().listen((clients) {
+      // Debounce: verify if count actually changed
+      if (clients.length == lastClientCount) return; //todo
+      lastClientCount = clients.length;
+
       _syncMembersFromClientList(clients);
     });
   }
@@ -161,12 +166,24 @@ class P2PService {
   // ---------------- PERMISSIONS ------------------
 
   Future<void> _checkPermissions(dynamic p) async {
-    if (!await p.checkStoragePermission()) await p.askStoragePermission();
-    if (!await p.checkP2pPermissions()) await p.askP2pPermissions();
-    if (!await p.checkBluetoothPermissions()) await p.askBluetoothPermissions();
-    if (!await p.checkWifiEnabled()) await p.enableWifiServices();
-    if (!await p.checkLocationEnabled()) await p.enableLocationServices();
-    if (!await p.checkBluetoothEnabled()) await p.enableBluetoothServices();
+    if (!await p.checkStoragePermission()) {
+      await p.askStoragePermission();
+    }
+    if (!await p.checkP2pPermissions()) {
+      await p.askP2pPermissions();
+    }
+    if (!await p.checkBluetoothPermissions()) {
+      await p.askBluetoothPermissions();
+    }
+    if (!await p.checkWifiEnabled()) {
+      await p.enableWifiServices();
+    }
+    if (!await p.checkLocationEnabled()) {
+      await p.enableLocationServices();
+    }
+    if (!await p.checkBluetoothEnabled()) {
+      await p.enableBluetoothServices();
+    }
   }
 
   // ---------------- HIGH-LEVEL SEND API ------------------
@@ -246,7 +263,7 @@ class P2PService {
           break;
 
         case "private":
-          // Only deliver if this client is the intended recipient
+         /* Only deliver if this client is the intended recipient
           if (data["to"] == currentUser!.deviceId) {
             final senderId = data["from"]?.toString();
             final mid = data['mid'] as int?;
@@ -278,7 +295,21 @@ class P2PService {
                 receiverDeviceId: data["to"]?.toString(),
               ),
             );
-          }
+          }*/
+            //     if (data["to"] == currentUser!.deviceId) {
+            // debugPrint('🥶✅ Private message is for me! Adding to stream');
+          // Fix: Trust the transport layer. If we received a private message via sendTextToClient,
+          // it is intended for us, even if the P2P Plugin ID doesn't match our App Device ID.
+            
+          _messagesController.add(
+            Message(
+              text: data["message"],
+              isMine: false,
+              time: TimeOfDay.now(),
+              isDelivered: true,
+              //senderName: data["senderName"],
+            ),
+          );
           break;
 
         case 'ack':

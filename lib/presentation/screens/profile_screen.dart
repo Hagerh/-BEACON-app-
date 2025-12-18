@@ -6,6 +6,7 @@ import 'package:projectdemo/business/cubit/user_profile_state.dart';
 import 'package:projectdemo/presentation/widgets/profileImage_widget.dart';
 import 'package:projectdemo/presentation/widgets/userInfoCard_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
+import 'package:projectdemo/presentation/routes/app_routes.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -33,7 +34,7 @@ class ProfileScreen extends StatelessWidget {
                   icon: const Icon(Icons.home_outlined),
                   tooltip: 'Home',
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/landing");
+                    Navigator.pushReplacementNamed(context, landingScreen);
                   },
                 ),
               ],
@@ -133,29 +134,40 @@ class ProfileScreen extends StatelessWidget {
                           emergencyContact: profile.emergencyContact,
                           editable: isEditable,
                           onSave: isEditable
-                              ? (data) {
-                                  context.read<ProfileCubit>().saveProfile(
-                                    emergencyContact: data['emergencyContact']!,
-                                    name: data['name']!,
-                                    email: data['email']!,
-                                    phone: data['phone']!,
-                                    address: data['address']!,
-                                    bloodType: data['bloodType']!,
-                                  );
+                              ? (data) async {
+                                  await context
+                                      .read<ProfileCubit>()
+                                      .saveProfile(
+                                        emergencyContact:
+                                            data['emergencyContact']!,
+                                        name: data['name']!,
+                                        email: data['email']!,
+                                        phone: data['phone']!,
+                                        address: data['address']!,
+                                        bloodType: data['bloodType']!,
+                                      );
 
                                   // Show success message
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Profile updated successfully!',
-                                        style: TextStyle(
-                                          color: AppColors.textPrimary,
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Profile updated successfully!',
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary,
+                                          ),
                                         ),
+                                        backgroundColor: AppColors.safeGreen,
+                                        duration: Duration(seconds: 2),
                                       ),
-                                      backgroundColor: AppColors.safeGreen,
-                                      duration: Duration(seconds: 2),
-                                    ),
-                                  );
+                                    );
+
+                                    // Navigate back to home
+                                    Navigator.pushReplacementNamed(
+                                      context,
+                                      landingScreen,
+                                    );
+                                  }
                                 }
                               : null,
                         ),
@@ -189,8 +201,8 @@ class ProfileScreen extends StatelessWidget {
                     bloodType: profile.bloodType,
                     editable: isEditable,
                     onSave: isEditable
-                        ? (data) {
-                            context.read<ProfileCubit>().saveProfile(
+                        ? (data) async {
+                            await context.read<ProfileCubit>().saveProfile(
                               name: data['name']!,
                               email: data['email']!,
                               phone: data['phone']!,
@@ -198,18 +210,27 @@ class ProfileScreen extends StatelessWidget {
                               bloodType: data['bloodType']!,
                               emergencyContact: data['emergencyContact']!,
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Profile updated successfully!',
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Profile updated successfully!',
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
+                                  backgroundColor: AppColors.safeGreen,
+                                  duration: Duration(seconds: 2),
                                 ),
-                                backgroundColor: AppColors.safeGreen,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                              );
+
+                              // Navigate back to home
+                              Navigator.pushReplacementNamed(
+                                context,
+                                landingScreen,
+                              );
+                            }
                           }
                         : null,
                   ),
