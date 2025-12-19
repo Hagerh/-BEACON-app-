@@ -143,7 +143,7 @@ class _VoiceWidgetState extends State<VoiceWidget> {
     }
   }
 
-  void _processCommand(String command) async {
+void _processCommand(String command) async {
     _speech.stop();
     if (mounted) {
       setState(() {
@@ -155,50 +155,89 @@ class _VoiceWidgetState extends State<VoiceWidget> {
     final lowerCommand = command.toLowerCase().trim();
     debugPrint("Processing command: $lowerCommand");
 
+    // Get the current route name
+    final currentRoute = ModalRoute.of(context)?.settings.name;
+
     try {
       if (lowerCommand.contains("stop listening")) {
         await _speak("Goodbye");
         _stopSession();
         return;
-      } else if (lowerCommand.contains("home") || lowerCommand == "go back") {
-        await _speak("Going Home");
-        if (mounted)
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            landingScreen,
-            (route) => false,
-          );
-      } else if (lowerCommand.contains("create network")) {
-        await _speak("Opening Create Network");
-        if (mounted) Navigator.pushNamed(context, createNetworkScreen);
-      } else if (lowerCommand.contains("join network")) {
-        await _speak("Opening Join Network");
-        if (mounted) Navigator.pushNamed(context, networkScreen);
-      } else if (lowerCommand.contains("profile")) {
-        await _speak("Opening Profile");
-        if (mounted) Navigator.pushNamed(context, profileScreen);
-      } else if (lowerCommand.contains("resources")) {
-        await _speak("Opening Resources");
-        if (mounted) Navigator.pushNamed(context, resourceScreen);
+      } 
+      
+      // ---navigation commands---
+      
+      else if (lowerCommand.contains("home") || lowerCommand == "go back") {
+        if (currentRoute == landingScreen) {
+           await _speak("You are already on the Home screen");
+        } else {
+           await _speak("Going Home");
+           if (mounted) {
+             Navigator.pushNamedAndRemoveUntil(
+               context,
+               landingScreen,
+               (route) => false,
+             );
+           }
+        }
+      } 
+      
+      else if (lowerCommand.contains("create network")) {
+        //  Check if we are already here
+        if (currentRoute == createNetworkScreen) {
+          await _speak("You are already on the Create Network screen");
+        } else {
+          await _speak("Opening Create Network");
+          if (mounted) Navigator.pushNamed(context, createNetworkScreen);
+        }
+      } 
+      
+      else if (lowerCommand.contains("join network")) {
+        if (currentRoute == networkScreen) {
+           await _speak("You are already on the Join Network screen");
+        } else {
+           await _speak("Opening Join Network");
+           if (mounted) Navigator.pushNamed(context, networkScreen);
+        }
+      } 
+      
+      else if (lowerCommand.contains("profile")) {
+        if (currentRoute == profileScreen) {
+           await _speak("You are already on the Profile screen");
+        } else {
+           await _speak("Opening Profile");
+           if (mounted) Navigator.pushNamed(context, profileScreen);
+        }
+      } 
+      
+      else if (lowerCommand.contains("resources")) {
+        if (currentRoute == resourceScreen) {
+           await _speak("You are already on the Resources screen");
+        } else {
+           await _speak("Opening Resources");
+           if (mounted) Navigator.pushNamed(context, resourceScreen);
+        }
       }
-      // Dashboard and Chat Commands
+      
+      // --- broadcast and chat commands ---
+      
+      
       else if (lowerCommand.contains("broadcast")) {
         final message = _extractMessage(lowerCommand, "broadcast");
         if (message.isNotEmpty) {
           try {
-            // check if the cubit exists before using it
-            final cubit = context
-                .read<NetworkDashboardCubit>(); 
+            final cubit = context.read<NetworkDashboardCubit>();
             cubit.broadcastMessage(message);
             await _speak("Broadcasting message: $message");
           } catch (e) {
-            
             await _speak("You can only broadcast from the Network Dashboard.");
           }
         } else {
           await _speak("Say broadcast followed by your message.");
         }
-      } else if (lowerCommand.startsWith("send")) {
+      } 
+      
+      else if (lowerCommand.startsWith("send")) {
         final message = _extractMessage(lowerCommand, "send");
         if (message.isNotEmpty) {
           try {
@@ -210,7 +249,9 @@ class _VoiceWidgetState extends State<VoiceWidget> {
         } else {
           await _speak("Say send followed by your message.");
         }
-      } else if (lowerCommand.contains("leave network")) {
+      } 
+      
+      else if (lowerCommand.contains("leave network")) {
         try {
           await context.read<NetworkDashboardCubit>().leaveNetwork();
           await _speak("Leaving network");
@@ -225,11 +266,8 @@ class _VoiceWidgetState extends State<VoiceWidget> {
       debugPrint("Voice Command Error: $e");
       await _speak("Something went wrong.");
     } finally {
-
       if (mounted) {
         setState(() => _isProcessing = false);
-
-        // If the session is still active, start listening again
         if (_isSessionActive) {
           _listen();
         }
