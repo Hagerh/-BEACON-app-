@@ -138,16 +138,30 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       final db = DatabaseHelper.instance;
       if (state.networkId == null) return message;
 
+      // Ensure we have a local currentDeviceId for proper persistence
+      String? currentId = state.currentDeviceId;
+      if (currentId == null) {
+        currentId = await DeviceIdService.getDeviceId();
+        emit(state.copyWith(currentDeviceId: currentId));
+      }
+
+      // Use the chat's peer/current IDs so history queries line up
+      final peerId = state.recipientDeviceId;
+
       final id = await db.insertMessage(
         networkId: state.networkId!,
-        senderDeviceId: message.senderDeviceId,
-        receiverDeviceId: message.receiverDeviceId ?? state.currentDeviceId,
+        senderDeviceId: peerId,
+        receiverDeviceId: currentId,
         messageContent: message.text,
-        isMine: message.isMine,
+        isMine: false,
         isDelivered: message.isDelivered,
       );
 
-      return message.copyWith(messageId: id);
+      return message.copyWith(
+        messageId: id,
+        senderDeviceId: peerId,
+        receiverDeviceId: currentId,
+      );
     } catch (e) {
       print('Failed to persist incoming message: $e');
       return message;
