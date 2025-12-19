@@ -18,7 +18,7 @@ class FooterWidget extends StatelessWidget {
         Navigator.pushReplacementNamed(context, resourceScreen);
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, profileScreen);
+        Navigator.pushReplacementNamed(context, networkProfileScreen);
         break;
     }
   }

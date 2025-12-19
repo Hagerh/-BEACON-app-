@@ -7,13 +7,13 @@ import 'package:projectdemo/presentation/widgets/profileImage_widget.dart';
 import 'package:projectdemo/presentation/widgets/userInfoCard_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
+import 'package:projectdemo/presentation/widgets/footer_widget.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class NetworkProfileScreen extends StatelessWidget {
+  const NetworkProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    //block listener to handle error states
     return BlocListener<ProfileCubit, ProfileState>(
       listener: (context, state) {
         if (state is ProfileError) {
@@ -30,15 +30,6 @@ class ProfileScreen extends StatelessWidget {
           return Scaffold(
             appBar: AppBar(
               automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.home_outlined),
-                  tooltip: 'Home',
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, landingScreen);
-                  },
-                ),
-              ],
               title: const Text("Profile"),
               flexibleSpace: Container(
                 decoration: const BoxDecoration(
@@ -55,6 +46,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             body: _buildBody(context, state),
             floatingActionButton: const VoiceWidget(),
+            bottomNavigationBar: const FooterWidget(currentPage: 2),
           );
         },
       ),
@@ -148,7 +140,6 @@ class ProfileScreen extends StatelessWidget {
                                         bloodType: data['bloodType']!,
                                       );
 
-                                  // Show success message
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -163,10 +154,9 @@ class ProfileScreen extends StatelessWidget {
                                       ),
                                     );
 
-                                    // Navigate back to home
                                     Navigator.pushReplacementNamed(
                                       context,
-                                      landingScreen,
+                                      networkDashboardScreen,
                                     );
                                   }
                                 }
@@ -180,7 +170,6 @@ class ProfileScreen extends StatelessWidget {
             );
           }
 
-          // Portrait mode
           return SingleChildScrollView(
             child: Center(
               child: Column(
@@ -226,10 +215,9 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                               );
 
-                              // Navigate back to home
                               Navigator.pushReplacementNamed(
                                 context,
-                                landingScreen,
+                                networkDashboardScreen,
                               );
                             }
                           }

@@ -473,10 +473,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          const VoiceWidget(),
-        ],
+        children: [const SizedBox(height: 12), const VoiceWidget()],
       ),
       bottomNavigationBar: const FooterWidget(currentPage: 0),
     );

@@ -9,6 +9,7 @@ import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/screens/landing_screen.dart';
 import 'package:projectdemo/presentation/screens/profile_screen.dart';
+import 'package:projectdemo/presentation/screens/network_profile_screen.dart';
 import 'package:projectdemo/presentation/screens/network_dashboard_screen.dart';
 import 'package:projectdemo/presentation/screens/private_chat_screen.dart';
 import 'package:projectdemo/presentation/screens/create_network_screen.dart';
@@ -80,6 +81,16 @@ class MyApp extends StatelessWidget {
           return BlocProvider(
             create: (context) => ProfileCubit()..loadProfile(args),
             child: const ProfileScreen(),
+          );
+        },
+        networkProfileScreen: (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+
+          return BlocProvider(
+            create: (context) => ProfileCubit()..loadProfile(args),
+            child: const NetworkProfileScreen(),
           );
         },
         networkDashboardScreen: (context) {

@@ -3,6 +3,7 @@ const networkScreen = '/network';
 const createNetworkScreen = '/create_network';
 const networkSettingsScreen = '/network_settings';
 const profileScreen = '/profile';
+const networkProfileScreen = '/network_profile';
 const chatScreen = '/private_chat';
 const resourceScreen = '/resources';
 const networkDashboardScreen = '/public_chat';
