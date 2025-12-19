@@ -17,19 +17,26 @@ class Joinnetworkscreen extends StatefulWidget {
 }
 
 class _JoinnetworkscreenState extends State<Joinnetworkscreen> {
+  
+  late final NetworkCubit _networkCubit;
+
   @override
   void initState() {
     super.initState();
+    
+    //  Capture the Cubit reference here, where context is valid
+    _networkCubit = context.read<NetworkCubit>();
+
     // Start discovering networks when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NetworkCubit>().startDiscovery(widget.currentUser);
+      _networkCubit.startDiscovery(widget.currentUser);
     });
   }
 
   @override
   void dispose() {
-    // Stop discovery when leaving screen
-    context.read<NetworkCubit>().stopDiscovery();
+   
+    _networkCubit.stopDiscovery(); 
     super.dispose();
   }
 

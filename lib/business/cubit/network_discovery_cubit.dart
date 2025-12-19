@@ -6,7 +6,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery_state.dart';
-import 'package:flutter/foundation.dart';
+
 
 
 class NetworkCubit extends Cubit<NetworkState> {
