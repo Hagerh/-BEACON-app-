@@ -89,8 +89,27 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         }
       }
 
+      // If we already have members, emit initial state immediately
+      if (p2pService.members.isNotEmpty) {
+        emit(
+          NetworkDashboardLoaded(
+            networkName: networkName,
+            isServer: p2pService.isHost,
+            connectedDevices: p2pService.members,
+            maxConnections: p2pService.maxMembers,
+            networkId: networkId,
+          ),
+        );
+      }
+
       _membersSubscription = p2pService.membersStream.listen(
         (members) async {
+          // Check for disconnection (if service has cleared state)
+          if (p2pService.currentUser == null) {
+            await leaveNetwork();
+            return;
+          }
+
           // Update device timestamps and upsert device info when we have a network id
           final db = DatabaseHelper.instance;
 
@@ -258,6 +277,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Leave the network (client)
   Future<void> leaveNetwork() async {
     try {
+      stopListening();
+
       // Get current device ID for database cleanup
       final deviceId = await DeviceIdService.getDeviceId();
       final db = DatabaseHelper.instance;
@@ -268,7 +289,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       // Clean up database - delete device (this will cascade if it's a host)
       await db.deleteDevice(deviceId);
 
-      stopListening();
+      emit(NetworkDashboardDisconnected(isServer: false));
     } catch (e) {
       emit(NetworkDashboardError('Failed to leave network: $e'));
     }
@@ -283,32 +304,25 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     if (!current.isServer) return;
 
     try {
+      stopListening();
+
+      emit(NetworkDashboardDisconnected(isServer: true));
+
       // Stop the P2P network
       await p2pService.stopNetwork();
+
       // If we were host, delete the network from local DB to clean up
-      if (state is NetworkDashboardLoaded &&
-          (state as NetworkDashboardLoaded).isServer) {
-        final s = state as NetworkDashboardLoaded;
+      if (current.isServer &&
+          current.networkId != null &&
+          p2pService.currentUser != null) {
         try {
-          if (s.networkId != null && p2pService.currentUser != null) {
-            await DatabaseHelper.instance.deleteNetwork(
-              networkId: s.networkId!,
-              requesterDeviceId: p2pService.currentUser!.deviceId,
-            );
-          }
+          await DatabaseHelper.instance.deleteNetwork(
+            networkId: current.networkId!,
+            requesterDeviceId: p2pService.currentUser!.deviceId,
+          );
         } catch (_) {}
       }
 
-      // Ensure P2P cleanup for all participants and stop listening locally.
-      try {
-        await p2pService
-            .leaveNetwork(); // client-side disconnect (no-op for host)
-      } catch (_) {}
-
-      stopListening();
-
-      //go back to landing screen
-      //Navigator.pushReplacementNamed(context, landingScreen);
     } catch (e) {
       emit(NetworkDashboardError('Failed to stop network: $e'));
     }

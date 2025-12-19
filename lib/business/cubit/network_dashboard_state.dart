@@ -66,3 +66,8 @@ class NetworkDashboardError extends NetworkDashboardState {
   final String message;
   NetworkDashboardError(this.message);
 }
+
+class NetworkDashboardDisconnected extends NetworkDashboardState {
+  final bool isServer;
+  NetworkDashboardDisconnected({required this.isServer});
+}

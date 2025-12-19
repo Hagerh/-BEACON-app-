@@ -277,205 +277,238 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
-          builder: (context, state) {
-            if (state is NetworkDashboardLoaded) {
-              return Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(state.networkName),
-                      if (_localSummary != null)
-                        Text(
-                          _localSummary!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  if (state.isServer)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.amber,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'HOST',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            } else if (state is NetworkDashboardLoading) {
-              return Text(state.networkName);
-            }
-            return const Text('Network Dashboard');
-          },
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.fromARGB(255, 235, 200, 200),
-                Color.fromARGB(255, 164, 236, 246),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
-            builder: (context, state) {
-              final isHost = state is NetworkDashboardLoaded
-                  ? state.isServer
-                  : false;
-
-              return Row(
-                children: [
-                  if (isHost)
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      tooltip: 'Network Settings',
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => BlocProvider.value(
-                              value: context.read<NetworkDashboardCubit>(),
-                              child: const NetworkSettingsScreen(),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  IconButton(
-                    icon: const Icon(Icons.campaign),
-                    tooltip: 'Broadcast',
-                    onPressed: () => _showBroadcastDialog(context),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => _showExitDialog(context),
-        ),
-      ),
-      body: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
-        builder: (context, state) {
-          if (state is NetworkDashboardInitial ||
-              state is NetworkDashboardLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state is NetworkDashboardError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text("Error: ${state.message}", textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                    child: const Text('Go Home'),
-                  ),
-                ],
-              ),
+    return BlocListener<NetworkDashboardCubit, NetworkDashboardState>(
+      listener: (context, state) {
+        if (state is NetworkDashboardDisconnected) {
+          if (state.isServer) {
+            // Host goes to Home Screen
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              landingScreen,
+              (route) => false,
+            );
+          } else {
+            // Client goes back to Join Network Screen
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              networkScreen,
+              (route) => route.settings.name == landingScreen,
             );
           }
-
-          if (state is NetworkDashboardLoaded) {
-            final devices = state.connectedDevices;
-            final total = devices.length;
-            final connected = devices.where((d) => d.status == 'Active').length;
-
-            return Column(
-              children: [
-                InfoSummary(total: total, connected: connected),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Connected Devices',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+            builder: (context, state) {
+              if (state is NetworkDashboardLoaded) {
+                return Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(state.networkName),
+                        if (_localSummary != null)
+                          Text(
+                            _localSummary!,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                    if (state.isServer)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.connectionTeal,
+                          color: Colors.amber,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          '$total',
-                          style: const TextStyle(
-                            color: Colors.white,
+                        child: const Text(
+                          'HOST',
+                          style: TextStyle(
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            color: Colors.black,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                  ],
+                );
+              } else if (state is NetworkDashboardLoading) {
+                return Text(state.networkName);
+              }
+              return const Text('Network Dashboard');
+            },
+          ),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.fromARGB(255, 235, 200, 200),
+                  Color.fromARGB(255, 164, 236, 246),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+              builder: (context, state) {
+                final isHost = state is NetworkDashboardLoaded
+                    ? state.isServer
+                    : false;
+
+                return Row(
+                  children: [
+                    if (isHost)
+                      IconButton(
+                        icon: const Icon(Icons.settings),
+                        tooltip: 'Network Settings',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: context.read<NetworkDashboardCubit>(),
+                                child: const NetworkSettingsScreen(),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.campaign),
+                      tooltip: 'Broadcast',
+                      onPressed: () => _showBroadcastDialog(context),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => _showExitDialog(context),
+          ),
+        ),
+        body: BlocBuilder<NetworkDashboardCubit, NetworkDashboardState>(
+          builder: (context, state) {
+            if (state is NetworkDashboardInitial ||
+                state is NetworkDashboardLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (state is NetworkDashboardError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Error: ${state.message}",
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
+                      },
+                      child: const Text('Go Home'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: devices.isEmpty
-                      ? const Center(
-                          child: Text('Waiting for devices to join...'),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: devices.length,
-                          itemBuilder: (context, index) {
-                            final device = devices[index];
-                            return DeviceCard(
-                              device: device,
-                              onChat: () => _openPrivateChat(context, device),
-                              onQuickSend: () =>
-                                  _showPredefinedMessages(context, device),
-                              onTap: () => _showDeviceOptions(context, device),
-                            );
-                          },
+              );
+            }
+
+            if (state is NetworkDashboardLoaded) {
+              final devices = state.connectedDevices;
+              final total = devices.length;
+              final connected = devices
+                  .where((d) => d.status == 'Active')
+                  .length;
+
+              return Column(
+                children: [
+                  InfoSummary(total: total, connected: connected),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Connected Devices',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
-                ),
-              ],
-            );
-          }
-          return const SizedBox.shrink();
-        },
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.connectionTeal,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$total',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: devices.isEmpty
+                        ? const Center(
+                            child: Text('Waiting for devices to join...'),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: devices.length,
+                            itemBuilder: (context, index) {
+                              final device = devices[index];
+                              return DeviceCard(
+                                device: device,
+                                onChat: () => _openPrivateChat(context, device),
+                                onQuickSend: () =>
+                                    _showPredefinedMessages(context, device),
+                                onTap: () =>
+                                    _showDeviceOptions(context, device),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [const SizedBox(height: 12), const VoiceWidget()],
+        ),
+        bottomNavigationBar: const FooterWidget(currentPage: 0),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [const SizedBox(height: 12), const VoiceWidget()],
-      ),
-      bottomNavigationBar: const FooterWidget(currentPage: 0),
     );
   }
 }

@@ -35,6 +35,7 @@ class P2PService {
   final List<DeviceDetail> _members = [];
   final _membersController = StreamController<List<DeviceDetail>>.broadcast();
   Stream<List<DeviceDetail>> get membersStream => _membersController.stream;
+  List<DeviceDetail> get members => List.unmodifiable(_members);
 
   // Chat messages
   final _messagesController = StreamController<Message>.broadcast();
@@ -101,8 +102,24 @@ class P2PService {
   }
 
   Future<void> stopNetwork() async {
-    if (isHost) await _host?.removeGroup();
-    disconnect();
+    try {
+      if (isHost) {
+        // Graceful shutdown: Notify all clients
+        for (final member in _members) {
+          if (member.deviceId != currentUser?.deviceId) {
+            kickUser(member.deviceId);
+          }
+        }
+        // Give time for kick messages to be sent
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        await _host?.removeGroup();
+      }
+    } catch (e) {
+      debugPrint("Error stopping network group: $e");
+    } finally {
+      disconnect();
+    }
   }
 
   // ---------------- CLIENT METHODS ------------------
@@ -273,51 +290,13 @@ class P2PService {
           break;
 
         case "private":
-          /* Only deliver if this client is the intended recipient
-          if (data["to"] == currentUser!.deviceId) {
-            final senderId = data["from"]?.toString();
-            final mid = data['mid'] as int?;
-
-            // Persist unread count for sender so UI can display unread badges
-            if (senderId != null) {
-              try {
-                DatabaseHelper.instance.incrementDeviceUnread(senderId);
-              } catch (_) {}
-            }
-
-            // Send delivery ACK back to sender if they provided a message id
-            if (mid != null && senderId != null) {
-              _sendToOne(senderId, {
-                'type': 'ack',
-                'mid': mid,
-                'from': currentUser!.deviceId,
-                'to': senderId,
-              });
-            }
-
-            _messagesController.add(
-              Message(
-                text: data["message"],
-                isMine: false,
-                time: TimeOfDay.now(),
-                isDelivered: true,
-                senderDeviceId: senderId,
-                receiverDeviceId: data["to"]?.toString(),
-              ),
-            );
-          }*/
-          //     if (data["to"] == currentUser!.deviceId) {
-          // debugPrint('🥶✅ Private message is for me! Adding to stream');
-          // Fix: Trust the transport layer. If we received a private message via sendTextToClient,
-          // it is intended for us, even if the P2P Plugin ID doesn't match our App Device ID.
-
           _messagesController.add(
             Message(
               text: data["message"],
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              //senderName: data["senderName"],
+              senderDeviceId: data["from"]?.toString(),
             ),
           );
           break;
@@ -346,9 +325,7 @@ class P2PService {
           break;
 
         case "kick":
-          if (data["to"] == currentUser!.deviceId) {
-            disconnect();
-          }
+          disconnect();
           break;
 
         case "network_full":
@@ -400,23 +377,21 @@ class P2PService {
   // ---------------- DISCONNECT ------------------
 
   void disconnect() {
-    // Clear all data
+    isHost = false;
+    currentUser = null;
+    _maxMembers = null;
+    isScanning = false;
+
     _members.clear();
     _membersController.add(List.unmodifiable(_members));
 
     _discoveryController.add([]);
 
-    // Dispose the P2P connections
     _host?.dispose();
     _client?.dispose();
 
-    // Reset ALL state
     _host = null;
     _client = null;
-    isHost = false;
-    currentUser = null;
-    _maxMembers = null;
-    isScanning = false;
   }
 
   // ---------------- DISPOSE ------------------
