@@ -72,7 +72,7 @@ class DatabaseHelper {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     ''');
-    
+
     // Create Devices table (references Networks)
     await db.execute('''
       CREATE TABLE Devices (
@@ -91,7 +91,7 @@ class DatabaseHelper {
         FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE
       )
     ''');
-    
+
     // Add foreign key constraint from Networks to Devices after both tables exist
     // Note: SQLite doesn't support adding foreign keys via ALTER TABLE easily,
     // so we'll handle referential integrity in application logic
@@ -169,17 +169,21 @@ class DatabaseHelper {
     if (oldVersion < 2) {
       // Ensure Resources has quantity and updated_at
       final columns = await db.rawQuery('PRAGMA table_info(Resources)');
-      final hasQuantity =
-          columns.any((c) => c['name']?.toString() == 'quantity');
+      final hasQuantity = columns.any(
+        (c) => c['name']?.toString() == 'quantity',
+      );
       if (!hasQuantity) {
         await db.execute(
-            'ALTER TABLE Resources ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0');
+          'ALTER TABLE Resources ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0',
+        );
       }
-      final hasUpdatedAt =
-          columns.any((c) => c['name']?.toString() == 'updated_at');
+      final hasUpdatedAt = columns.any(
+        (c) => c['name']?.toString() == 'updated_at',
+      );
       if (!hasUpdatedAt) {
         await db.execute(
-            'ALTER TABLE Resources ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+          'ALTER TABLE Resources ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP',
+        );
       }
 
       // Ensure ResourceRequests table exists
@@ -197,10 +201,6 @@ class DatabaseHelper {
       ''');
     }
   }
-
- 
-
-     
 
   // Fetch network summaries - returns list of networks as Device objects
   Future<List<Device>> fetchNetworkSummaries() async {
@@ -296,11 +296,7 @@ class DatabaseHelper {
         limit: limit,
       );
     } else {
-      rows = await db.query(
-        'Messages',
-        orderBy: 'sent_at ASC',
-        limit: limit,
-      );
+      rows = await db.query('Messages', orderBy: 'sent_at ASC', limit: limit);
     }
 
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
@@ -409,7 +405,7 @@ class DatabaseHelper {
         deviceData['network_id'] = newNetworkId;
         deviceData['is_host'] = 1; // User is host of their own network
         await db.insert('Devices', deviceData);
-        
+
         // Update network to reference this device as host
         await db.update(
           'Networks',
@@ -462,6 +458,42 @@ class DatabaseHelper {
     }
   }
 
+  Future<void> updateNetworkParticipants(
+    int networkId,
+    List<DeviceDetail> activeMembers,
+  ) async {
+    final db = await instance.database;
+
+    await db.transaction((txn) async {
+      // 1. Get list of currently active Device IDs from the P2P service
+      final activeIds = activeMembers.map((m) => m.deviceId).toList();
+
+      // 2. Mark devices NOT in this list as 'Offline'
+      // We exclude the host (is_host=1) from being marked offline via this check if needed,
+      // though usually the host is in the active list anyway.
+      if (activeIds.isEmpty) {
+        await txn.update(
+          'Devices',
+          {'status': 'Offline'},
+          where: 'network_id = ? AND is_host = 0',
+          whereArgs: [networkId],
+        );
+      } else {
+        final placeholders = List.filled(activeIds.length, '?').join(',');
+        await txn.rawUpdate(
+          '''
+          UPDATE Devices 
+          SET status = 'Offline' 
+          WHERE network_id = ? 
+          AND is_host = 0 
+          AND device_id NOT IN ($placeholders)
+          ''',
+          [networkId, ...activeIds],
+        );
+      }
+    });
+  }
+
   // Create a new network and return its ID
   Future<int> createNetwork({
     required String networkName,
@@ -469,13 +501,13 @@ class DatabaseHelper {
     String status = 'Active',
   }) async {
     final db = await instance.database;
-    
+
     final networkId = await db.insert('Networks', {
       'network_name': networkName,
       'host_device_id': hostDeviceId,
       'status': status,
     });
-    
+
     return networkId;
   }
 
@@ -530,7 +562,7 @@ class DatabaseHelper {
     int isHost = 0,
   }) async {
     final db = await instance.database;
-    
+
     final existing = await db.query(
       'Devices',
       where: 'device_id = ?',
@@ -587,7 +619,7 @@ class DatabaseHelper {
     bool isDelivered = false,
   }) async {
     final db = await instance.database;
-    
+
     return await db.insert('Messages', {
       'network_id': networkId,
       'sender_device_id': senderDeviceId,
@@ -599,19 +631,11 @@ class DatabaseHelper {
     });
   }
 
-  // Update message delivery status
-  Future<void> updateMessageDelivery(int messageId, bool isDelivered) async {
-    final db = await instance.database;
-    await db.update(
-      'Messages',
-      {'is_delivered': isDelivered ? 1 : 0},
-      where: 'message_id = ?',
-      whereArgs: [messageId],
-    );
-  }
-
   // Get devices by network ID
-  Future<List<DeviceDetail>> getDevicesByNetworkId(int networkId, {int? limit}) async {
+  Future<List<DeviceDetail>> getDevicesByNetworkId(
+    int networkId, {
+    int? limit,
+  }) async {
     final db = await instance.database;
     final rows = await db.query(
       'Devices',
@@ -782,8 +806,9 @@ class DatabaseHelper {
       }
 
       final resource = rows.first;
-      final currentQty =
-          (resource['quantity'] is int) ? resource['quantity'] as int : int.tryParse(resource['quantity'].toString()) ?? 0;
+      final currentQty = (resource['quantity'] is int)
+          ? resource['quantity'] as int
+          : int.tryParse(resource['quantity'].toString()) ?? 0;
 
       if (requestQuantity <= 0) {
         throw Exception('Requested quantity must be greater than zero');
@@ -793,7 +818,9 @@ class DatabaseHelper {
       }
 
       final remaining = currentQty - requestQuantity;
-      final newStatus = remaining > 0 ? (resource['status']?.toString() ?? 'Available') : 'Unavailable';
+      final newStatus = remaining > 0
+          ? (resource['status']?.toString() ?? 'Available')
+          : 'Unavailable';
 
       await txn.update(
         'Resources',
@@ -860,7 +887,9 @@ class DatabaseHelper {
   }
 
   // Fetch requests for a given resource
-  Future<List<Map<String, dynamic>>> fetchResourceRequests(int resourceId) async {
+  Future<List<Map<String, dynamic>>> fetchResourceRequests(
+    int resourceId,
+  ) async {
     final db = await instance.database;
     return await db.query(
       'ResourceRequests',

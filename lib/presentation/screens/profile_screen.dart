@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/business/cubit/profile/user_profile_state.dart';
+
 import 'package:projectdemo/core/constants/colors.dart';
-import 'package:projectdemo/business/cubit/user_profile_cubit.dart';
-import 'package:projectdemo/business/cubit/user_profile_state.dart';
+import 'package:projectdemo/business/cubit/profile/user_profile_cubit.dart';
+
 import 'package:projectdemo/presentation/widgets/profileImage_widget.dart';
 import 'package:projectdemo/presentation/widgets/userInfoCard_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';

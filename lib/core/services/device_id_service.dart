@@ -23,7 +23,7 @@ class DeviceIdService {
       await _storage.write(key: _keyName, value: deviceId);
       return deviceId;
     } catch (e) {
-      // Fallback: generate a temporary ID (not ideal for production)
+     
       return _generateDeviceId();
     }
   }

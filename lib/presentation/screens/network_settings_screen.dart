@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
-import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
-import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
+import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
 
 class NetworkSettingsScreen extends StatelessWidget {
   const NetworkSettingsScreen({super.key});

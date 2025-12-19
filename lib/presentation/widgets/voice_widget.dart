@@ -6,8 +6,8 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 // Import Cubits
-import 'package:projectdemo/business/cubit/network_dashboard_cubit.dart';
-import 'package:projectdemo/business/cubit/private_chat_cubit.dart';
+import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_cubit.dart';
+import 'package:projectdemo/business/cubit/private_chat/private_chat_cubit.dart';
 
 class VoiceWidget extends StatefulWidget {
   const VoiceWidget({super.key});

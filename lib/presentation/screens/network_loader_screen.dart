@@ -4,7 +4,7 @@ import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
-import 'package:projectdemo/business/cubit/network_discovery_cubit.dart';
+import 'package:projectdemo/business/cubit/network_discovery/network_discovery_cubit.dart';
 import 'package:projectdemo/presentation/screens/join_networks_screen.dart';
 import 'package:projectdemo/core/constants/colors.dart';
 

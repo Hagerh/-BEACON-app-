@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
-import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
 
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   final P2PService p2pService;
@@ -113,6 +113,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           final db = DatabaseHelper.instance;
 
           if (networkId != null) {
+            await db.updateNetworkParticipants(networkId, members);
+
             for (var member in members) {
               await db.updateDeviceLastSeen(member.deviceId);
               await db.upsertDevice(
@@ -126,7 +128,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                 color: member.color.value.toString(),
               );
             }
-
+            
             final devices = await db.getDevicesByNetworkId(networkId);
 
             emit(
@@ -206,15 +208,14 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Broadcast a message to all members in the network
   Future<void> broadcastMessage(String message) async {
     try {
-      // Persist broadcast message if we have a local network record and get id
-      int? localId;
+      // Persist broadcast message if we have a local network record
       try {
         final db = DatabaseHelper.instance;
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
-            localId = await db.insertMessage(
+            await db.insertMessage(
               networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: null,
@@ -226,8 +227,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         }
       } catch (_) {}
 
-      // Send broadcast including local message id when available
-      p2pService.sendBroadcast(message, localMessageId: localId);
+      // Send broadcast
+      p2pService.sendBroadcast(message);
     } catch (e) {
       emit(NetworkDashboardError('Failed to broadcast: $e'));
     }
@@ -236,26 +237,26 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Send a private message to a specific device
   Future<void> sendPrivateMessage(String deviceId, String message) async {
     try {
-      int? localId;
+      // Persist message if we have a local network record
       try {
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
             final db = DatabaseHelper.instance;
-            localId = await db.insertMessage(
+            await db.insertMessage(
               networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: deviceId,
               messageContent: message,
               isMine: true,
-              isDelivered: false,
+              isDelivered: true, // Delivered immediately in P2P
             );
           }
         }
       } catch (_) {}
 
-      p2pService.sendPrivate(deviceId, message, localMessageId: localId);
+      p2pService.sendPrivate(deviceId, message);
     } catch (e) {
       emit(NetworkDashboardError('Failed to send message: $e'));
     }
@@ -321,7 +322,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           );
         } catch (_) {}
       }
-
     } catch (e) {
       emit(NetworkDashboardError('Failed to stop network: $e'));
     }

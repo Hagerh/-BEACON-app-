@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
-import 'package:projectdemo/business/cubit/create_network_cubit.dart';
-import 'package:projectdemo/business/cubit/create_network_state.dart';
+import 'package:projectdemo/business/cubit/create_network/create_network_cubit.dart';
+import 'package:projectdemo/business/cubit/create_network/create_network_state.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 
