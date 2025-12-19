@@ -10,9 +10,7 @@ import 'package:projectdemo/business/cubit/private_chat_state.dart';
 class PrivateChatCubit extends Cubit<PrivateChatState> {
   final P2PService p2pService;
   StreamSubscription<Message>? _messageSubscription;
-  StreamSubscription<DeliveryUpdate>? _deliverySubscription;
 
-  /// Optionally provide [networkId] and [currentDeviceId] so messages can be persisted.
   PrivateChatCubit({
     required this.p2pService,
     required String recipientName,
@@ -32,17 +30,18 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
        ) {
     _loadHistory();
     _startListeningToMessages();
-
-    // Listen for delivery ACKs and update UI state
-    _deliverySubscription = p2pService.deliveryStream.listen((update) {
-      _handleDeliveryUpdate(update);
-    });
   }
 
   // Start listening to incoming messages from P2P service
   void _startListeningToMessages() {
     _messageSubscription = p2pService.messagesStream.listen(
       (message) async {
+        // Only handle messages FROM the current chat peer
+        // (not TO them - those are our outgoing messages)
+        if (message.senderDeviceId != state.recipientDeviceId) {
+          return; // Ignore messages from other peers
+        }
+
         try {
           final persisted = await _persistIncomingMessage(message);
 
@@ -66,7 +65,7 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       text: text,
       isMine: true,
       time: TimeOfDay.now(),
-      isDelivered: false, // Will be set to true when ACK arrives
+      isDelivered: true, // Always delivered immediately in P2P
     );
 
     try {
@@ -75,7 +74,8 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
 
       if (localId == -1) {
         // Persistence failed, add message without id so user still sees it
-        final updatedMessages = List<Message>.from(state.messages)..add(newMessage);
+        final updatedMessages = List<Message>.from(state.messages)
+          ..add(newMessage);
         emit(state.copyWith(messages: updatedMessages));
         return;
       }
@@ -85,8 +85,8 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       final updatedMessages = List<Message>.from(state.messages)..add(saved);
       emit(state.copyWith(messages: updatedMessages));
 
-      // Send via P2P service and include local message id so recipient can ACK
-      p2pService.sendPrivate(state.recipientDeviceId, text, localMessageId: localId);
+      // Send via P2P service
+      p2pService.sendPrivate(state.recipientDeviceId, text);
     } catch (e) {
       print('Failed to send message: $e');
 
@@ -222,30 +222,14 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   }
 
   // Stop listening when closing the chat
-
   void stopListening() {
     _messageSubscription?.cancel();
-    _deliverySubscription?.cancel();
-
     _messageSubscription = null;
-    _deliverySubscription = null;
-  }
-
-  void _handleDeliveryUpdate(DeliveryUpdate update) {
-    final index = state.messages.indexWhere((m) => m.messageId == update.messageId);
-    if (index == -1) return;
-
-    final updated = List<Message>.from(state.messages);
-    final msg = updated[index].copyWith(isDelivered: update.delivered);
-    updated[index] = msg;
-
-    emit(state.copyWith(messages: updated));
   }
 
   @override
   Future<void> close() {
     _messageSubscription?.cancel();
-    _deliverySubscription?.cancel();
 
     return super.close();
   }

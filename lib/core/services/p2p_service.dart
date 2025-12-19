@@ -7,14 +7,6 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/data/models/message_model.dart';
-import 'package:projectdemo/data/local/database_helper.dart';
-
-// Event emitted when a local message is marked delivered (ACK received)
-class DeliveryUpdate {
-  final int messageId;
-  final bool delivered;
-  DeliveryUpdate(this.messageId, this.delivered);
-}
 
 class P2PService {
   FlutterP2pHost? _host;
@@ -40,18 +32,6 @@ class P2PService {
   // Chat messages
   final _messagesController = StreamController<Message>.broadcast();
   Stream<Message> get messagesStream => _messagesController.stream;
-
-  // Delivery ACK notifications
-  // Emits DeliveryUpdate when a message is marked delivered
-  final _deliveryController = StreamController<DeliveryUpdate>.broadcast();
-  Stream<DeliveryUpdate> get deliveryStream => _deliveryController.stream;
-
-  // Lightweight delivery update model
-  // messageId: local DB message id
-  // delivered: whether message was delivered
-  // Note: kept in this file for brevity; can be moved to a shared models file if needed
-
-  // DeliveryUpdate class defined below to avoid top-level changes
 
   // ---------------- SERVER METHODS ------------------
 
@@ -215,27 +195,29 @@ class P2PService {
 
   // ---------------- HIGH-LEVEL SEND API ------------------
 
-  void sendBroadcast(String text, {int? localMessageId}) {
+  void sendBroadcast(String text) {
+    final String fromId = _myP2pId ?? currentUser!.deviceId;
     final Map<String, dynamic> pkt = {
       "type": "broadcast",
-      "from": currentUser!.deviceId,
+      "from": fromId,
+      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
       "to": "ALL",
       "message": text,
       "senderName": currentUser!.name,
     };
-    if (localMessageId != null) pkt['mid'] = localMessageId;
     _sendToAll(pkt);
   }
 
-  void sendPrivate(String receiverId, String text, {int? localMessageId}) {
+  void sendPrivate(String receiverId, String text) {
+    final String fromId = _myP2pId ?? currentUser!.deviceId;
     final Map<String, dynamic> pkt = {
       "type": "private",
-      "from": currentUser!.deviceId,
+      "from": fromId,
+      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
       "to": receiverId,
       "message": text,
       "senderName": currentUser!.name,
     };
-    if (localMessageId != null) pkt['mid'] = localMessageId;
     _sendToOne(receiverId, pkt);
   }
 
@@ -276,6 +258,16 @@ class P2PService {
     try {
       Map<String, dynamic> data = jsonDecode(raw);
 
+      // Extract sender's P2P ID and app UUID
+      final String? senderP2pId = data["from"]?.toString();
+      final String? senderAppId = data["fromAppId"]?.toString();
+
+      // Update mapping if both IDs are present
+      if (senderP2pId != null && senderAppId != null) {
+        _p2pIdToAppId[senderP2pId] = senderAppId;
+        _appIdToP2pId[senderAppId] = senderP2pId;
+      }
+
       switch (data["type"]) {
         case "broadcast":
           _messagesController.add(
@@ -284,7 +276,7 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: data["from"]?.toString(),
+              senderDeviceId: senderP2pId, // Use P2P ID for consistency
             ),
           );
           break;
@@ -296,32 +288,9 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: data["from"]?.toString(),
+              senderDeviceId: senderP2pId, // Use P2P ID for consistency
             ),
           );
-          break;
-
-        case 'ack':
-          // Received an ack for a previously sent message
-          try {
-            final mid = data['mid'];
-            if (mid != null) {
-              // mark message as delivered in DB
-              final id = mid is int ? mid : int.tryParse(mid.toString());
-              if (id != null) {
-                await DatabaseHelper.instance.updateMessageDelivery(id, true);
-
-                // Notify listeners (cubits) that this message was delivered
-                try {
-                  if (!_deliveryController.isClosed) {
-                    _deliveryController.add(DeliveryUpdate(id, true));
-                  }
-                } catch (_) {}
-              }
-            }
-          } catch (e) {
-            debugPrint('Failed to process ack: $e');
-          }
           break;
 
         case "kick":
@@ -343,24 +312,46 @@ class P2PService {
 
   // ---------------- MEMBERS MANAGEMENT ------------------
 
+  // Current device's P2P ID (from the P2P library)
+  String? _myP2pId;
+  String? get myP2pId => _myP2pId;
+
+  // Mapping between P2P library IDs and app UUIDs
+  final Map<String, String> _p2pIdToAppId = {}; // p2pId -> appUuid
+  final Map<String, String> _appIdToP2pId = {}; // appUuid -> p2pId
+
+  /// Get the P2P library ID for a given app UUID
+  String? getP2pIdForAppId(String appId) => _appIdToP2pId[appId];
+
+  /// Get the app UUID for a given P2P library ID
+  String? getAppIdForP2pId(String p2pId) => _p2pIdToAppId[p2pId];
+
   void _syncMembersFromClientList(List<P2pClientInfo> clients) {
     // Check if network is full (server only, and only when a limit is set)
     final max = _maxMembers;
     if (isHost && max != null && clients.length > max) {
-      debugPrint("Network full: ${clients.length}/$max");
-
       // todo: Send network full message to clients trying to join
-
       return;
     }
 
     _members.clear();
 
+    // Find current device's P2P ID in the client list
     for (var client in clients) {
+      if ((isHost && client.isHost) ||
+          (!isHost && client.username == currentUser?.name)) {
+        _myP2pId = client.id;
+        // Map our own IDs
+        if (currentUser != null) {
+          _p2pIdToAppId[client.id] = currentUser!.deviceId;
+          _appIdToP2pId[currentUser!.deviceId] = client.id;
+        }
+      }
+
       _members.add(
         DeviceDetail(
           name: client.username,
-          deviceId: client.id,
+          deviceId: client.id, // Use P2P ID as the primary ID in members list
           status: "Active",
           unread: 0,
           signalStrength: 100,
@@ -387,6 +378,11 @@ class P2PService {
 
     _discoveryController.add([]);
 
+    // Clear ID mappings
+    _p2pIdToAppId.clear();
+    _appIdToP2pId.clear();
+    _myP2pId = null;
+
     _host?.dispose();
     _client?.dispose();
 
@@ -400,7 +396,6 @@ class P2PService {
     if (!_discoveryController.isClosed) _discoveryController.close();
     if (!_membersController.isClosed) _membersController.close();
     if (!_messagesController.isClosed) _messagesController.close();
-    if (!_deliveryController.isClosed) _deliveryController.close();
 
     _host?.dispose();
     _client?.dispose();

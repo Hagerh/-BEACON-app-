@@ -206,15 +206,14 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Broadcast a message to all members in the network
   Future<void> broadcastMessage(String message) async {
     try {
-      // Persist broadcast message if we have a local network record and get id
-      int? localId;
+      // Persist broadcast message if we have a local network record
       try {
         final db = DatabaseHelper.instance;
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
-            localId = await db.insertMessage(
+            await db.insertMessage(
               networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: null,
@@ -226,8 +225,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         }
       } catch (_) {}
 
-      // Send broadcast including local message id when available
-      p2pService.sendBroadcast(message, localMessageId: localId);
+      // Send broadcast
+      p2pService.sendBroadcast(message);
     } catch (e) {
       emit(NetworkDashboardError('Failed to broadcast: $e'));
     }
@@ -236,26 +235,26 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Send a private message to a specific device
   Future<void> sendPrivateMessage(String deviceId, String message) async {
     try {
-      int? localId;
+      // Persist message if we have a local network record
       try {
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
             final db = DatabaseHelper.instance;
-            localId = await db.insertMessage(
+            await db.insertMessage(
               networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: deviceId,
               messageContent: message,
               isMine: true,
-              isDelivered: false,
+              isDelivered: true, // Delivered immediately in P2P
             );
           }
         }
       } catch (_) {}
 
-      p2pService.sendPrivate(deviceId, message, localMessageId: localId);
+      p2pService.sendPrivate(deviceId, message);
     } catch (e) {
       emit(NetworkDashboardError('Failed to send message: $e'));
     }
@@ -321,7 +320,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           );
         } catch (_) {}
       }
-
     } catch (e) {
       emit(NetworkDashboardError('Failed to stop network: $e'));
     }
