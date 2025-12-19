@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
-import 'package:projectdemo/core/services/device_id_service.dart';
+import 'package:projectdemo/core/services/user_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard_state.dart';
@@ -67,21 +67,31 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       // can be persisted on this device as well (host and clients).
       if (networkId == null && p2pService.currentUser != null) {
         try {
+          // Get current user's ID
+          final userId = await UserIdService.getUserId();
+
+          // Get P2P device ID (will be set when members are synced)
+          final p2pDeviceId = p2pService.myP2pId;
+
           networkId = await db.createNetwork(
             networkName: networkName,
-            hostDeviceId: p2pService.currentUser!.deviceId,
+            hostDeviceId:
+                p2pDeviceId ?? '', // Will be updated when device is created
           );
 
-          // Ensure *this* device exists in the local DB.
-          await db.upsertDevice(
-            deviceId: p2pService.currentUser!.deviceId,
-            networkId: networkId,
-            name: p2pService.currentUser!.name,
-            status: p2pService.currentUser!.status,
-            isHost: p2pService.isHost ? 1 : 0,
-            avatar: p2pService.currentUser!.avatarLetter,
-            color: p2pService.currentUser!.avatarColor.value.toString(),
-          );
+          // Ensure *this* device exists in the local DB when we have P2P ID
+          if (p2pDeviceId != null) {
+            await db.upsertDevice(
+              deviceId: p2pDeviceId,
+              userId: userId,
+              networkId: networkId,
+              name: p2pService.currentUser!.name,
+              status: p2pService.currentUser!.status,
+              isHost: p2pService.isHost ? 1 : 0,
+              avatar: p2pService.currentUser!.avatarLetter,
+              color: p2pService.currentUser!.avatarColor.value.toString(),
+            );
+          }
         } catch (e) {
           // Log but continue — failure to persist shouldn't break the UI
           debugPrint('Failed to persist created network (local mirror): $e');
@@ -157,9 +167,37 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
 
             // Only do expensive upserts if properties changed
             if (hasChanges) {
+              // Get current user's ID for our own device
+              final currentUserId = await UserIdService.getUserId();
+
               for (var member in members) {
+                // Try to find user_id for this device, or use current user's ID if it's us
+                int userId = currentUserId; // Default to current user
+
+                // Check if this device belongs to current user (by checking if P2P ID matches)
+                final isCurrentUser = p2pService.myP2pId == member.deviceId;
+
+                if (!isCurrentUser) {
+                  // For other members, try to find their user_id from existing device record
+                  final existingDevice = await db.getDeviceByDeviceId(
+                    member.deviceId,
+                  );
+                  if (existingDevice != null &&
+                      existingDevice['user_id'] != null) {
+                    userId = existingDevice['user_id'] as int;
+                  } else {
+                    // Unknown device - create a temporary user for it
+                    // This is a simplified approach; in production you might want to handle this differently
+                    userId = await db.getOrCreateUserForDevice(
+                      member.deviceId,
+                      member.name,
+                    );
+                  }
+                }
+
                 await db.upsertDevice(
                   deviceId: member.deviceId,
+                  userId: userId,
                   networkId: networkId,
                   name: member.name,
                   status: member.status,
@@ -302,7 +340,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
-            final sender = p2pService.currentUser?.deviceId;
+            final sender = p2pService.myP2pId;
             await db.insertMessage(
               networkId: s.networkId!,
               senderDeviceId: sender,
@@ -330,7 +368,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         if (state is NetworkDashboardLoaded) {
           final s = state as NetworkDashboardLoaded;
           if (s.networkId != null) {
-            final sender = p2pService.currentUser?.deviceId;
+            final sender = p2pService.myP2pId;
             final db = DatabaseHelper.instance;
             await db.insertMessage(
               networkId: s.networkId!,
@@ -367,15 +405,17 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       stopListening();
 
-      // Get current device ID for database cleanup
-      final deviceId = await DeviceIdService.getDeviceId();
+      // Get current P2P device ID for database cleanup
+      final deviceId = p2pService.myP2pId;
       final db = DatabaseHelper.instance;
 
       // Leave the P2P network
       await p2pService.leaveNetwork();
 
       // Clean up database - delete device (this will cascade if it's a host)
-      await db.deleteDevice(deviceId);
+      if (deviceId != null) {
+        await db.deleteDevice(deviceId);
+      }
 
       emit(NetworkDashboardDisconnected(isServer: false));
     } catch (e) {
@@ -406,7 +446,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         try {
           await DatabaseHelper.instance.deleteNetwork(
             networkId: current.networkId!,
-            requesterDeviceId: p2pService.currentUser!.deviceId,
+            requesterDeviceId: p2pService.myP2pId ?? '',
           );
         } catch (_) {}
       }

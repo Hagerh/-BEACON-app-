@@ -160,8 +160,10 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
 
       // Ensure the sender (peer) exists in Devices table so FK constraint won't fail
       try {
+        final peerUserId = await db.getOrCreateUserForDevice(peerId!, peerId);
         await db.upsertDevice(
-          deviceId: peerId!,
+          deviceId: peerId,
+          userId: peerUserId,
           networkId: networkId,
           name: peerId,
           status: 'Active',
@@ -170,10 +172,14 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
 
       // Ensure local device exists in Devices table too
       try {
-        final localUser = await db.getUserProfile(currentId!);
+        final localUser = await db.getUserProfileByDeviceId(currentId!);
         final localName = localUser?.name ?? 'Local Device';
+        final localUserId =
+            localUser?.userId ??
+            await db.getOrCreateUserForDevice(currentId, localName);
         await db.upsertDevice(
           deviceId: currentId,
+          userId: localUserId,
           networkId: networkId,
           name: localName,
           status: 'Active',

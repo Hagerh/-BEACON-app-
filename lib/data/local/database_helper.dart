@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart';
 
@@ -73,10 +74,11 @@ class DatabaseHelper {
       )
     ''');
 
-    // Create Devices table (references Networks)
+    // Create Devices table (references Networks and Users)
     await db.execute('''
       CREATE TABLE Devices (
         device_id TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL,
         network_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         status TEXT NOT NULL,
@@ -88,7 +90,8 @@ class DatabaseHelper {
         ip_address TEXT,
         last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         is_host INTEGER NOT NULL DEFAULT 0,
-        FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE
+        FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES Users(user_id) ON DELETE CASCADE
       )
     ''');
 
@@ -106,9 +109,7 @@ class DatabaseHelper {
         phone TEXT,
         address TEXT,
         blood_type TEXT,
-        emergency_contact TEXT,
-        device_id TEXT,
-        FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE CASCADE
+        emergency_contact TEXT
       )
     ''');
 
@@ -162,6 +163,13 @@ class DatabaseHelper {
 
     // Handle migrations for future versions
     await _upgradeDB(db, 1, version);
+
+    // Enable foreign keys (if supported)
+    try {
+      await db.execute('PRAGMA foreign_keys = ON');
+    } catch (_) {
+      // Some SQLite versions may not support this
+    }
   }
 
   // Migration handler
@@ -199,6 +207,59 @@ class DatabaseHelper {
           FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
         )
       ''');
+    }
+
+    // Migration to new schema: Add user_id to Devices, remove device_id FK from Users
+    if (oldVersion < 3) {
+      try {
+        // Check if user_id column exists in Devices
+        final deviceColumns = await db.rawQuery('PRAGMA table_info(Devices)');
+        final hasUserId = deviceColumns.any(
+          (c) => c['name']?.toString() == 'user_id',
+        );
+
+        if (!hasUserId) {
+          // Add user_id column to Devices (nullable initially)
+          await db.execute('ALTER TABLE Devices ADD COLUMN user_id INTEGER');
+
+          // For each device, create a user and link them
+          final devices = await db.query('Devices');
+          for (var device in devices) {
+            final deviceId = device['device_id']?.toString();
+            final deviceName = device['name']?.toString() ?? 'Unknown Device';
+
+            if (deviceId != null) {
+              // Create a user for this device
+              final userId = await db.insert('Users', {
+                'username': '$deviceName (${deviceId.substring(0, 8)})',
+                'email': '',
+                'phone': '',
+                'address': '',
+                'blood_type': '',
+                'emergency_contact': '',
+              });
+
+              // Update device with user_id
+              await db.update(
+                'Devices',
+                {'user_id': userId},
+                where: 'device_id = ?',
+                whereArgs: [deviceId],
+              );
+            }
+          }
+
+          // Make user_id NOT NULL after populating
+          // SQLite doesn't support ALTER COLUMN, so we need to recreate the table
+          // For now, we'll handle this in application logic
+        }
+
+        // Remove device_id foreign key constraint from Users (SQLite limitation - handled in app logic)
+        // The device_id column can remain for backward compatibility but won't be used as FK
+      } catch (e) {
+        debugPrint('Migration error: $e');
+        // Continue - migration failures shouldn't break the app
+      }
     }
   }
 
@@ -302,26 +363,56 @@ class DatabaseHelper {
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
   }
 
-  // Get user profile by device_id (joins Users and Devices tables)
-  Future<UserProfile?> getUserProfile(String deviceId) async {
+  // Get user profile by user_id (joins Users and Devices tables to get latest device info)
+  Future<UserProfile?> getUserProfileById(int userId) async {
     final db = await instance.database;
 
     final rows = await db.rawQuery(
       '''
       SELECT 
+        u.user_id,
         u.username,
         u.email,
         u.phone,
         u.address,
         u.blood_type,
-        u.device_id,
         u.emergency_contact,
         d.status,
         d.avatar,
         d.color
       FROM Users u
-      LEFT JOIN Devices d ON u.device_id = d.device_id
-      WHERE u.device_id = ?
+      LEFT JOIN Devices d ON u.user_id = d.user_id
+      WHERE u.user_id = ?
+      ORDER BY d.last_seen_at DESC
+      LIMIT 1
+    ''',
+      [userId],
+    );
+
+    if (rows.isEmpty) return null;
+    return UserProfile.fromMap(rows.first as Map<String, dynamic>);
+  }
+
+  // Get user profile by device_id (for backward compatibility and P2P lookups)
+  Future<UserProfile?> getUserProfileByDeviceId(String deviceId) async {
+    final db = await instance.database;
+
+    final rows = await db.rawQuery(
+      '''
+      SELECT 
+        u.user_id,
+        u.username,
+        u.email,
+        u.phone,
+        u.address,
+        u.blood_type,
+        u.emergency_contact,
+        d.status,
+        d.avatar,
+        d.color
+      FROM Devices d
+      INNER JOIN Users u ON d.user_id = u.user_id
+      WHERE d.device_id = ?
       LIMIT 1
     ''',
       [deviceId],
@@ -331,27 +422,50 @@ class DatabaseHelper {
     return UserProfile.fromMap(rows.first as Map<String, dynamic>);
   }
 
-  // Save or update user profile
+  // Legacy method for backward compatibility
+  @Deprecated('Use getUserProfileById or getUserProfileByDeviceId instead')
+  Future<UserProfile?> getUserProfile(String deviceId) async {
+    return getUserProfileByDeviceId(deviceId);
+  }
+
+  // Create a default current user and return the user_id
+  Future<int> createCurrentUser() async {
+    final db = await instance.database;
+
+    // Check if a default user already exists
+    final existing = await db.query(
+      'Users',
+      where: 'username = ?',
+      whereArgs: ['My Device'],
+      limit: 1,
+    );
+
+    if (existing.isNotEmpty) {
+      return existing.first['user_id'] as int;
+    }
+
+    // Create new user
+    final userId = await db.insert('Users', {
+      'username': 'My Device',
+      'email': '',
+      'phone': '',
+      'address': '',
+      'blood_type': '',
+      'emergency_contact': '',
+    });
+
+    return userId;
+  }
+
+  // Save or update user profile (Users table only, no device creation)
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
-    // IMPORTANT: Handle Devices FIRST before Users to satisfy foreign key constraint
-    // The Users table has a foreign key on device_id that references Devices(device_id)
-    /*
-    final existingUsers = await db.query(
-      'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
     final userData = profile.toUserMap();
 
-    if (existingUsers.isEmpty) {
+    if (profile.userId == 0) {
       // Insert new user
-      // Username is UNIQUE; if this device was re-provisioned (new device_id) but kept the
-      // same default username (e.g. "My Device"), a plain insert will throw.
-      // REPLACE resolves the conflict by overwriting the existing row with the same username.
+      // Username is UNIQUE in this schema; avoid crashing when default usernames repeat.
       await db.insert(
         'Users',
         userData,
@@ -362,98 +476,8 @@ class DatabaseHelper {
       await db.update(
         'Users',
         userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
-      );
-    }
-*/
-    // Update or insert device info (avatar and color)
-    // Check if device exists
-    final existingDevices = await db.query(
-      'Devices',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
-    final profileMap = profile.toMap();
-
-    // Prepare device data
-    final deviceData = <String, dynamic>{
-      'device_id': profile.deviceId,
-      'name': profile.name,
-      'status': profile.status,
-      'avatar': profile.avatarLetter,
-      'color': profileMap['color'],
-      'ip_address': null, // Can be set later when P2P connection is established
-    };
-
-    if (existingDevices.isEmpty) {
-      // Try to find an existing network to attach to, or use a default
-      final networks = await db.query('Networks', limit: 1);
-
-      if (networks.isNotEmpty) {
-        deviceData['network_id'] = networks.first['network_id'];
-        deviceData['is_host'] = 0;
-        await db.insert('Devices', deviceData);
-      } else {
-        // Create a default network for the user
-        final newNetworkId = await db.insert('Networks', {
-          'network_name': 'Local Self',
-          'status': 'Offline',
-        });
-        deviceData['network_id'] = newNetworkId;
-        deviceData['is_host'] = 1; // User is host of their own network
-        await db.insert('Devices', deviceData);
-
-        // Update network to reference this device as host
-        await db.update(
-          'Networks',
-          {'host_device_id': profile.deviceId},
-          where: 'network_id = ?',
-          whereArgs: [newNetworkId],
-        );
-      }
-    } else {
-      // Update existing device
-      await db.update(
-        'Devices',
-        {
-          'name': profile.name,
-          'status': profile.status,
-          'avatar': profile.avatarLetter,
-          'color': profileMap['color'],
-        },
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
-      );
-    }
-
-    // NOW insert/update the user (after device exists)
-    final existingUsers = await db.query(
-      'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
-    final userData = profile.toUserMap();
-
-    if (existingUsers.isEmpty) {
-      // Insert new user
-      // username is UNIQUE in this schema; avoid crashing when default usernames repeat.
-      await db.insert(
-        'Users',
-        userData,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } else {
-      // Update existing user
-      await db.update(
-        'Users',
-        userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
+        where: 'user_id = ?',
+        whereArgs: [profile.userId],
       );
     }
   }
@@ -512,9 +536,51 @@ class DatabaseHelper {
     return rows.first['network_id'] as int?;
   }
 
+  // Get device record by device_id
+  Future<Map<String, dynamic>?> getDeviceByDeviceId(String deviceId) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'Devices',
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first as Map<String, dynamic>;
+  }
+
+  // Get or create a user for an unknown device (used when we see a device but don't know its user)
+  Future<int> getOrCreateUserForDevice(
+    String deviceId,
+    String deviceName,
+  ) async {
+    final db = await instance.database;
+
+    // First, try to find existing device and get its user_id
+    final device = await getDeviceByDeviceId(deviceId);
+    if (device != null && device['user_id'] != null) {
+      return device['user_id'] as int;
+    }
+
+    // Create a new user for this unknown device
+    // Use device name as username, but make it unique
+    final username = '$deviceName (${deviceId.substring(0, 8)})';
+    final userId = await db.insert('Users', {
+      'username': username,
+      'email': '',
+      'phone': '',
+      'address': '',
+      'blood_type': '',
+      'emergency_contact': '',
+    });
+
+    return userId;
+  }
+
   // Insert or update a device in a network
   Future<void> upsertDevice({
     required String deviceId,
+    required int userId,
     required int networkId,
     required String name,
     required String status,
@@ -536,6 +602,7 @@ class DatabaseHelper {
 
     final deviceData = <String, dynamic>{
       'device_id': deviceId,
+      'user_id': userId,
       'network_id': networkId,
       'name': name,
       'status': status,

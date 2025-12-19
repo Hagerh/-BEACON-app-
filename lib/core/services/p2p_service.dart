@@ -196,11 +196,16 @@ class P2PService {
   // ---------------- HIGH-LEVEL SEND API ------------------
 
   void sendBroadcast(String text) {
-    final String fromId = _myP2pId ?? currentUser!.deviceId;
+    final String fromId = _myP2pId ?? '';
+    if (fromId.isEmpty) {
+      debugPrint("Cannot send broadcast: P2P ID not available");
+      return;
+    }
     final Map<String, dynamic> pkt = {
       "type": "broadcast",
       "from": fromId,
-      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
+      "fromUserId": currentUser!.userId
+          .toString(), // User ID for reverse lookup
       "to": "ALL",
       "message": text,
       "senderName": currentUser!.name,
@@ -209,11 +214,16 @@ class P2PService {
   }
 
   void sendPrivate(String receiverId, String text) {
-    final String fromId = _myP2pId ?? currentUser!.deviceId;
+    final String fromId = _myP2pId ?? '';
+    if (fromId.isEmpty) {
+      debugPrint("Cannot send private message: P2P ID not available");
+      return;
+    }
     final Map<String, dynamic> pkt = {
       "type": "private",
       "from": fromId,
-      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
+      "fromUserId": currentUser!.userId
+          .toString(), // User ID for reverse lookup
       "to": receiverId,
       "message": text,
       "senderName": currentUser!.name,
@@ -221,11 +231,16 @@ class P2PService {
     _sendToOne(receiverId, pkt);
   }
 
-  void kickUser(String userId) {
-    _sendToOne(userId, {
+  void kickUser(String deviceId) {
+    final String fromId = _myP2pId ?? '';
+    if (fromId.isEmpty) {
+      debugPrint("Cannot kick user: P2P ID not available");
+      return;
+    }
+    _sendToOne(deviceId, {
       "type": "kick",
-      "from": currentUser!.deviceId,
-      "to": userId,
+      "from": fromId,
+      "to": deviceId,
       "message": "removed by server",
     });
   }
@@ -258,14 +273,17 @@ class P2PService {
     try {
       Map<String, dynamic> data = jsonDecode(raw);
 
-      // Extract sender's P2P ID and app UUID
+      // Extract sender's P2P ID and user ID
       final String? senderP2pId = data["from"]?.toString();
-      final String? senderAppId = data["fromAppId"]?.toString();
+      final String? senderUserIdStr = data["fromUserId"]?.toString();
 
       // Update mapping if both IDs are present
-      if (senderP2pId != null && senderAppId != null) {
-        _p2pIdToAppId[senderP2pId] = senderAppId;
-        _appIdToP2pId[senderAppId] = senderP2pId;
+      if (senderP2pId != null && senderUserIdStr != null) {
+        final senderUserId = int.tryParse(senderUserIdStr);
+        if (senderUserId != null) {
+          _p2pIdToUserId[senderP2pId] = senderUserId;
+          _userIdToP2pId[senderUserId] = senderP2pId;
+        }
       }
 
       switch (data["type"]) {
@@ -316,15 +334,15 @@ class P2PService {
   String? _myP2pId;
   String? get myP2pId => _myP2pId;
 
-  // Mapping between P2P library IDs and app UUIDs
-  final Map<String, String> _p2pIdToAppId = {}; // p2pId -> appUuid
-  final Map<String, String> _appIdToP2pId = {}; // appUuid -> p2pId
+  // Mapping between P2P library IDs and user IDs
+  final Map<String, int> _p2pIdToUserId = {}; // p2pId -> userId
+  final Map<int, String> _userIdToP2pId = {}; // userId -> p2pId
 
-  /// Get the P2P library ID for a given app UUID
-  String? getP2pIdForAppId(String appId) => _appIdToP2pId[appId];
+  /// Get the P2P library ID for a given user ID
+  String? getP2pIdForUserId(int userId) => _userIdToP2pId[userId];
 
-  /// Get the app UUID for a given P2P library ID
-  String? getAppIdForP2pId(String p2pId) => _p2pIdToAppId[p2pId];
+  /// Get the user ID for a given P2P library ID
+  int? getUserIdForP2pId(String p2pId) => _p2pIdToUserId[p2pId];
 
   void _syncMembersFromClientList(List<P2pClientInfo> clients) {
     // Check if network is full (server only, and only when a limit is set)
@@ -343,8 +361,8 @@ class P2PService {
         _myP2pId = client.id;
         // Map our own IDs
         if (currentUser != null) {
-          _p2pIdToAppId[client.id] = currentUser!.deviceId;
-          _appIdToP2pId[currentUser!.deviceId] = client.id;
+          _p2pIdToUserId[client.id] = currentUser!.userId;
+          _userIdToP2pId[currentUser!.userId] = client.id;
         }
       }
 
@@ -379,8 +397,8 @@ class P2PService {
     _discoveryController.add([]);
 
     // Clear ID mappings
-    _p2pIdToAppId.clear();
-    _appIdToP2pId.clear();
+    _p2pIdToUserId.clear();
+    _userIdToP2pId.clear();
     _myP2pId = null;
 
     _host?.dispose();

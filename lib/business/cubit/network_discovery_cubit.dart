@@ -8,8 +8,6 @@ import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery_state.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 
-
-
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;
   StreamSubscription? _discoverySubscription;
@@ -75,8 +73,14 @@ class NetworkCubit extends Cubit<NetworkState> {
         }
 
         // Upsert the host device entry locally (mark as host)
+        // Create/get user for this host device
+        final hostUserId = await db.getOrCreateUserForDevice(
+          device.deviceAddress,
+          device.deviceName,
+        );
         await db.upsertDevice(
           deviceId: device.deviceAddress,
+          userId: hostUserId,
           networkId: networkId,
           name: device.deviceName,
           status: 'Active',

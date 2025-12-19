@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UserProfile {
+  final int userId; // Primary identifier from Users table
   final String name;
   final String avatarLetter;
   final Color avatarColor;
@@ -9,10 +10,10 @@ class UserProfile {
   final String phone;
   final String address;
   final String bloodType;
-  final String deviceId; // Unique identifier  -> for P2P and Database
   final String emergencyContact;
 
   UserProfile({
+    required this.userId,
     required this.name,
     required this.avatarLetter,
     required this.avatarColor,
@@ -21,7 +22,6 @@ class UserProfile {
     required this.phone,
     required this.address,
     required this.bloodType,
-    required this.deviceId,
     required this.emergencyContact,
   });
 
@@ -49,20 +49,25 @@ class UserProfile {
   }
 
   factory UserProfile.fromMap(Map<String, dynamic> m) {
-    final name = m['username']?.toString() ?? m['name']?.toString() ?? 'Unknown';
-    final avatarLetter = m['avatar']?.toString() ?? 
-                        (name.isNotEmpty ? name[0].toUpperCase() : '?');
+    final userId = (m['user_id'] is int)
+        ? m['user_id'] as int
+        : int.tryParse(m['user_id']?.toString() ?? '0') ?? 0;
+    final name =
+        m['username']?.toString() ?? m['name']?.toString() ?? 'Unknown';
+    final avatarLetter =
+        m['avatar']?.toString() ??
+        (name.isNotEmpty ? name[0].toUpperCase() : '?');
     final avatarColor = _parseColor(m['color']);
     final status = m['status']?.toString() ?? 'Idle';
     final email = m['email']?.toString() ?? '';
     final phone = m['phone']?.toString() ?? '';
     final address = m['address']?.toString() ?? '';
-    final bloodType = m['blood_type']?.toString() ?? m['bloodType']?.toString() ?? 'N/A';
-    final deviceId = m['device_id']?.toString() ?? '';
+    final bloodType =
+        m['blood_type']?.toString() ?? m['bloodType']?.toString() ?? 'N/A';
     final emergencyContact = m['emergency_contact']?.toString() ?? '';
-    
 
     return UserProfile(
+      userId: userId,
       name: name,
       avatarLetter: avatarLetter,
       avatarColor: avatarColor,
@@ -71,20 +76,18 @@ class UserProfile {
       phone: phone,
       address: address,
       bloodType: bloodType,
-      deviceId: deviceId,
       emergencyContact: emergencyContact,
-
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'user_id': userId,
       'username': name,
       'email': email,
       'phone': phone,
       'address': address,
       'blood_type': bloodType,
-      'device_id': deviceId,
       'color': _colorToHex(avatarColor),
       'avatar': avatarLetter,
       'emergency_contact': emergencyContact,
@@ -99,12 +102,12 @@ class UserProfile {
       'phone': phone,
       'address': address,
       'blood_type': bloodType,
-      'device_id': deviceId,
       'emergency_contact': emergencyContact,
     };
   }
 
   UserProfile copyWith({
+    int? userId,
     String? name,
     String? email,
     String? phone,
@@ -114,6 +117,7 @@ class UserProfile {
     String? emergencyContact,
   }) {
     return UserProfile(
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       avatarLetter: name != null ? name[0].toUpperCase() : avatarLetter,
       avatarColor: avatarColor ?? this.avatarColor,
@@ -122,7 +126,6 @@ class UserProfile {
       phone: phone ?? this.phone,
       address: address ?? this.address,
       bloodType: bloodType ?? this.bloodType,
-      deviceId: deviceId,
       emergencyContact: emergencyContact ?? this.emergencyContact,
     );
   }
