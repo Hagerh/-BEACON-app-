@@ -63,29 +63,28 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       final network = await db.getNetworkByName(networkName);
       int? networkId = network == null ? null : network['network_id'] as int?;
 
-      // If host and no network exists locally, create it and upsert host device
-      if (networkId == null &&
-          p2pService.isHost &&
-          p2pService.currentUser != null) {
+      // If no network exists locally, create a local record so that messages
+      // can be persisted on this device as well (host and clients).
+      if (networkId == null && p2pService.currentUser != null) {
         try {
           networkId = await db.createNetwork(
             networkName: networkName,
             hostDeviceId: p2pService.currentUser!.deviceId,
           );
 
-          // Ensure host device exists and is marked as host
+          // Ensure *this* device exists in the local DB.
           await db.upsertDevice(
             deviceId: p2pService.currentUser!.deviceId,
             networkId: networkId,
             name: p2pService.currentUser!.name,
             status: p2pService.currentUser!.status,
-            isHost: 1,
+            isHost: p2pService.isHost ? 1 : 0,
             avatar: p2pService.currentUser!.avatarLetter,
             color: p2pService.currentUser!.avatarColor.value.toString(),
           );
         } catch (e) {
           // Log but continue — failure to persist shouldn't break the UI
-          debugPrint('Failed to persist created network: $e');
+          debugPrint('Failed to persist created network (local mirror): $e');
         }
       }
 
