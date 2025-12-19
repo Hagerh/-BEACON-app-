@@ -390,6 +390,81 @@ class P2PService {
     _client = null;
   }
 
+  // ---------------- DEBUG/TEST METHODS ------------------
+
+  /// Add a mock device for testing (debug only)
+  void addMockDevice({
+    String? name,
+    String? deviceId,
+    String status = 'Active',
+    int signalStrength = 85,
+    String distance = '5m',
+  }) {
+    final mockDevice = DeviceDetail(
+      name: name ?? 'Mock Device',
+      deviceId: deviceId ??
+          'mock-device-${DateTime.now().millisecondsSinceEpoch}',
+      status: status,
+      unread: 0,
+      signalStrength: signalStrength,
+      distance: distance,
+      avatar: (name ?? 'M')[0].toUpperCase(),
+      color: Colors.purple,
+    );
+
+    // Add to members list
+    _members.add(mockDevice);
+
+    // Emit updated list to trigger cubit updates
+    _membersController.add(List.unmodifiable(_members));
+
+    debugPrint('✅ Mock device added: ${mockDevice.name} (${mockDevice.deviceId})');
+  }
+
+  /// Remove a mock device (debug only)
+  void removeMockDevice(String deviceId) {
+    final initialLength = _members.length;
+    _members.removeWhere((d) => d.deviceId == deviceId);
+    final removed = initialLength - _members.length;
+    
+    if (removed > 0) {
+      _membersController.add(List.unmodifiable(_members));
+      debugPrint('🗑️ Mock device removed: $deviceId');
+    } else {
+      debugPrint('❌ Mock device not found: $deviceId');
+    }
+  }
+
+  /// Update mock device properties to test conditional emit (debug only)
+  void updateMockDeviceProperty({
+    required String deviceId,
+    String? name,
+    String? status,
+    int? signalStrength,
+    String? distance,
+  }) {
+    final index = _members.indexWhere((d) => d.deviceId == deviceId);
+    if (index == -1) {
+      debugPrint('❌ Mock device not found: $deviceId');
+      return;
+    }
+
+    final current = _members[index];
+    _members[index] = DeviceDetail(
+      name: name ?? current.name,
+      deviceId: current.deviceId,
+      status: status ?? current.status,
+      unread: current.unread,
+      signalStrength: signalStrength ?? current.signalStrength,
+      distance: distance ?? current.distance,
+      avatar: current.avatar,
+      color: current.color,
+    );
+
+    _membersController.add(List.unmodifiable(_members));
+    debugPrint('🔄 Mock device updated: $deviceId');
+  }
+
   // ---------------- DISPOSE ------------------
   void dispose() {
     // Close all controllers when app is shutting down
