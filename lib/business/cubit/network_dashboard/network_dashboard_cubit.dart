@@ -109,52 +109,141 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
             return;
           }
 
-          // Update device timestamps and upsert device info when we have a network id
           final db = DatabaseHelper.instance;
 
           if (networkId != null) {
             await db.updateNetworkParticipants(networkId, members);
 
             for (var member in members) {
+              // Always update timestamps
               await db.updateDeviceLastSeen(member.deviceId);
-              await db.upsertDevice(
-                deviceId: member.deviceId,
-                networkId: networkId,
-                name: member.name,
-                status: member.status,
-                signalStrength: member.signalStrength,
-                distance: member.distance,
-                avatar: member.avatar,
-                color: member.color.value.toString(),
-              );
             }
-            
+
+            // Check if other properties have changed
+            final currentState = state;
+            bool hasChanges = false;
+            if (currentState is NetworkDashboardLoaded) {
+              final currentDevices = currentState.connectedDevices
+                  .map((d) => d.deviceId)
+                  .toSet();
+              final newDevices = members.map((d) => d.deviceId).toSet();
+
+              // Check if device list changed
+              if (currentDevices.length != newDevices.length ||
+                  !currentDevices.containsAll(newDevices)) {
+                hasChanges = true;
+              } else {
+                // Check if any device properties changed
+                for (var member in members) {
+                  try {
+                    final currentDevice = currentState.connectedDevices
+                        .firstWhere((d) => d.deviceId == member.deviceId);
+                    if (currentDevice.status != member.status ||
+                        currentDevice.name != member.name ||
+                        currentDevice.signalStrength != member.signalStrength ||
+                        currentDevice.distance != member.distance) {
+                      hasChanges = true;
+                      break;
+                    }
+                  } catch (e) {
+                    // Device not found in current state, treat as change
+                    hasChanges = true;
+                    break;
+                  }
+                }
+              }
+            } else {
+              // No current state, treat as change
+              hasChanges = true;
+            }
+
+            // Only do expensive upserts if properties changed
+            if (hasChanges) {
+              for (var member in members) {
+                await db.upsertDevice(
+                  deviceId: member.deviceId,
+                  networkId: networkId,
+                  name: member.name,
+                  status: member.status,
+                  signalStrength: member.signalStrength,
+                  distance: member.distance,
+                  avatar: member.avatar,
+                  color: member.color.value.toString(),
+                );
+              }
+            }
+
             final devices = await db.getDevicesByNetworkId(networkId);
 
-            emit(
-              NetworkDashboardLoaded(
-                networkName: networkName,
-                isServer: p2pService.isHost,
-                connectedDevices: devices,
-                maxConnections: p2pService.maxMembers,
-                networkId: networkId,
-              ),
-            );
+            // Only emit if state actually changed
+            // Reuse currentState from earlier check (state won't change in same function)
+            if (currentState is! NetworkDashboardLoaded) {
+              // No current state, emit new state
+              emit(
+                NetworkDashboardLoaded(
+                  networkName: networkName,
+                  isServer: p2pService.isHost,
+                  connectedDevices: devices, // Includes updated timestamps
+                  maxConnections: p2pService.maxMembers,
+                  networkId: networkId,
+                ),
+              );
+            } else if (currentState.connectedDevices.length != devices.length ||
+                !DeviceDetail.areListsEqual(
+                  currentState.connectedDevices,
+                  devices,
+                )) {
+              // State exists but devices changed, emit updated state
+              emit(
+                NetworkDashboardLoaded(
+                  networkName: networkName,
+                  isServer: p2pService.isHost,
+                  connectedDevices: devices, // Includes updated timestamps
+                  maxConnections: p2pService.maxMembers,
+                  networkId: networkId,
+                ),
+              );
+            }
+            // If state unchanged, skip emit (timestamps updated in DB but UI won't refresh)
           } else {
             // No local network record — just reflect current members
+            // Always update timestamps even without networkId
             for (var member in members) {
               await db.updateDeviceLastSeen(member.deviceId);
             }
 
-            emit(
-              NetworkDashboardLoaded(
-                networkName: networkName,
-                isServer: p2pService.isHost,
-                connectedDevices: members,
-                maxConnections: p2pService.maxMembers,
-                networkId: null,
-              ),
-            );
+            // Check if we need to emit new state
+            final currentState = state;
+            if (currentState is! NetworkDashboardLoaded) {
+              emit(
+                NetworkDashboardLoaded(
+                  networkName: networkName,
+                  isServer: p2pService.isHost,
+                  connectedDevices: members,
+                  maxConnections: p2pService.maxMembers,
+                  networkId: null,
+                ),
+              );
+            } else {
+              final currentIds = currentState.connectedDevices
+                  .map((d) => d.deviceId)
+                  .toSet();
+              final newIds = members.map((m) => m.deviceId).toSet();
+
+              // Only emit if device list changed
+              if (currentIds.length != newIds.length ||
+                  !currentIds.containsAll(newIds)) {
+                emit(
+                  NetworkDashboardLoaded(
+                    networkName: networkName,
+                    isServer: p2pService.isHost,
+                    connectedDevices: members,
+                    maxConnections: p2pService.maxMembers,
+                    networkId: null,
+                  ),
+                );
+              }
+            }
           }
         },
         onError: (error) {

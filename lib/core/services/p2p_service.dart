@@ -31,6 +31,14 @@ class P2PService {
   final _messagesController = StreamController<Message>.broadcast();
   Stream<Message> get messagesStream => _messagesController.stream;
 
+  // Current device's P2P ID (from the P2P library)
+  String? _myP2pId;
+  String? get myP2pId => _myP2pId;
+
+  // Mapping between P2P library IDs and app UUIDs
+  final Map<String, String> _p2pIdToAppId = {}; // p2pId -> appUuid
+  final Map<String, String> _appIdToP2pId = {}; // appUuid -> p2pId
+
   // ---------------- SERVER METHODS ------------------
   Future<void> initializeServer(UserProfile me) async {
     try {
@@ -333,14 +341,6 @@ class P2PService {
   }
 
   // ---------------- MEMBERS MANAGEMENT ------------------
-  // Current device's P2P ID (from the P2P library)
-  String? _myP2pId;
-  String? get myP2pId => _myP2pId;
-
-  // Mapping between P2P library IDs and app UUIDs
-  final Map<String, String> _p2pIdToAppId = {}; // p2pId -> appUuid
-  final Map<String, String> _appIdToP2pId = {}; // appUuid -> p2pId
-
   /// Get the P2P library ID for a given app UUID
   String? getP2pIdForAppId(String appId) => _appIdToP2pId[appId];
 

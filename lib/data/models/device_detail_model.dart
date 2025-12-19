@@ -79,4 +79,37 @@ class DeviceDetail {
   //-> final connected = devices
   //.where((d) => d.status == 'Active')
   // .length;
+
+  /// Compare device IDs and key properties (excluding timestamps which change frequently)
+  static bool areListsEqual(
+    List<DeviceDetail> list1,
+    List<DeviceDetail> list2,
+  ) {
+    if (list1.length != list2.length) return false;
+
+    // Create maps for quick lookup
+    final map1 = {for (var d in list1) d.deviceId: d};
+    final map2 = {for (var d in list2) d.deviceId: d};
+
+    // Check if all device IDs match
+    if (!map1.keys.toSet().containsAll(map2.keys)) return false;
+
+    // Check if key properties match for each device
+    for (var deviceId in map1.keys) {
+      final d1 = map1[deviceId]!;
+      final d2 = map2[deviceId]!;
+
+      if (d1.name != d2.name ||
+          d1.status != d2.status ||
+          d1.unread != d2.unread ||
+          d1.signalStrength != d2.signalStrength ||
+          d1.distance != d2.distance ||
+          d1.avatar != d2.avatar ||
+          d1.color != d2.color) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }
