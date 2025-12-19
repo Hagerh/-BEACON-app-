@@ -249,32 +249,44 @@ class DatabaseHelper {
 
   Future<List<Message>> fetchRecentMessages({
     int? networkId,
-    String? forDeviceId,
+    String? peerDeviceId,
+    String? currentDeviceId,
     int limit = 50,
   }) async {
     final db = await instance.database;
 
     List<Map<String, Object?>> rows;
 
-    if (forDeviceId != null) {
-      if (networkId != null) {
-        rows = await db.query(
-          'Messages',
-          where:
-              'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
-          whereArgs: [networkId, forDeviceId, forDeviceId],
-          orderBy: 'sent_at ASC',
-          limit: limit,
-        );
-      } else {
-        rows = await db.query(
-          'Messages',
-          where: 'sender_device_id = ? OR receiver_device_id = ?',
-          whereArgs: [forDeviceId, forDeviceId],
-          orderBy: 'sent_at ASC',
-          limit: limit,
-        );
-      }
+    if (networkId != null && peerDeviceId != null && currentDeviceId != null) {
+      // Strict 1-to-1 history between currentDeviceId and peerDeviceId inside a network
+      rows = await db.query(
+        'Messages',
+        where: '''
+          network_id = ? AND (
+            (sender_device_id = ? AND receiver_device_id = ?)
+            OR
+            (sender_device_id = ? AND receiver_device_id = ?)
+          )
+        ''',
+        whereArgs: [
+          networkId,
+          peerDeviceId,
+          currentDeviceId,
+          currentDeviceId,
+          peerDeviceId,
+        ],
+        orderBy: 'sent_at ASC',
+        limit: limit,
+      );
+    } else if (peerDeviceId != null) {
+      // All messages involving peer across networks (fallback)
+      rows = await db.query(
+        'Messages',
+        where: 'sender_device_id = ? OR receiver_device_id = ?',
+        whereArgs: [peerDeviceId, peerDeviceId],
+        orderBy: 'sent_at ASC',
+        limit: limit,
+      );
     } else if (networkId != null) {
       rows = await db.query(
         'Messages',
@@ -284,7 +296,11 @@ class DatabaseHelper {
         limit: limit,
       );
     } else {
-      rows = await db.query('Messages', orderBy: 'sent_at ASC', limit: limit);
+      rows = await db.query(
+        'Messages',
+        orderBy: 'sent_at ASC',
+        limit: limit,
+      );
     }
 
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
@@ -620,6 +636,20 @@ class DatabaseHelper {
     await updateDeviceUnread(deviceId, 0);
   }
 
+  /// Delete all messages involving a specific device inside a given network.
+  Future<void> deleteMessagesForDeviceInNetwork({
+    required int networkId,
+    required String deviceId,
+  }) async {
+    final db = await instance.database;
+    await db.delete(
+      'Messages',
+      where:
+          'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
+      whereArgs: [networkId, deviceId, deviceId],
+    );
+  }
+
   // Delete a device; if it is the host, delete its network (cascades devices/resources/messages)
   Future<void> deleteDevice(String deviceId) async {
     final db = await instance.database;
@@ -636,7 +666,18 @@ class DatabaseHelper {
       final isHost = (device['is_host'] is int)
           ? (device['is_host'] as int) == 1
           : device['is_host'] == true;
-      final networkId = device['network_id'];
+      final networkId = device['network_id'] as int?;
+
+      // If this is a non-host device that is leaving, delete all messages
+      // involving it in this network so its chat history is purged.
+      if (!isHost && networkId != null) {
+        await txn.delete(
+          'Messages',
+          where:
+              'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
+          whereArgs: [networkId, deviceId, deviceId],
+        );
+      }
 
       if (isHost && networkId != null) {
         // Delete network; ON DELETE CASCADE removes its devices/resources/messages

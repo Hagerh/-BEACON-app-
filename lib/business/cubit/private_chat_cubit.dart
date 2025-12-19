@@ -106,14 +106,16 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       final db = DatabaseHelper.instance;
 
       // Ensure we have a local currentDeviceId for proper persistence
-      if (state.currentDeviceId == null) {
-        final id = await DeviceIdService.getDeviceId();
-        emit(state.copyWith(currentDeviceId: id));
+      String? currentId = state.currentDeviceId;
+      if (currentId == null) {
+        currentId = await DeviceIdService.getDeviceId();
+        emit(state.copyWith(currentDeviceId: currentId));
       }
 
       final msgs = await db.fetchRecentMessages(
         networkId: state.networkId,
-        forDeviceId: state.recipientDeviceId,
+        peerDeviceId: state.recipientDeviceId,
+        currentDeviceId: currentId,
         limit: 100,
       );
 
