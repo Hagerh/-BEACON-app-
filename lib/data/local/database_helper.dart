@@ -503,6 +503,19 @@ class DatabaseHelper {
     return networks.isEmpty ? null : networks.first;
   }
 
+  // Try to resolve a network id by a device id (returns null if not known)
+  Future<int?> getNetworkIdByDeviceId(String deviceId) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'Devices',
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['network_id'] as int?;
+  }
+
   // Insert or update a device in a network
   Future<void> upsertDevice({
     required String deviceId,

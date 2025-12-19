@@ -6,6 +6,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery_state.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
 
 
 
@@ -58,6 +59,34 @@ class NetworkCubit extends Cubit<NetworkState> {
 
       // Connect to the selected device
       await p2pService.connectToServer(device);
+
+      // Ensure we have a local network record for this server so incoming messages can be persisted
+      try {
+        final db = DatabaseHelper.instance;
+        final existing = await db.getNetworkByName(device.deviceName);
+        int networkId;
+        if (existing == null) {
+          networkId = await db.createNetwork(
+            networkName: device.deviceName,
+            hostDeviceId: device.deviceAddress,
+          );
+        } else {
+          networkId = existing['network_id'] as int;
+        }
+
+        // Upsert the host device entry locally (mark as host)
+        await db.upsertDevice(
+          deviceId: device.deviceAddress,
+          networkId: networkId,
+          name: device.deviceName,
+          status: 'Active',
+          isHost: 1,
+        );
+      } catch (e) {
+        // Swallow DB errors to avoid breaking connect flow; still helpful to log
+        // ignore: avoid_print
+        print('Warning: failed to ensure network/device in local DB: $e');
+      }
 
       emit(NetworkConnected(device: device));
     } catch (e) {

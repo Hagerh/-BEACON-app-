@@ -136,7 +136,9 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   Future<Message> _persistIncomingMessage(Message message) async {
     try {
       final db = DatabaseHelper.instance;
-      if (state.networkId == null) return message;
+
+      // Determine networkId: prefer state, otherwise try to resolve from sender
+      int? networkId = state.networkId;
 
       // Ensure we have a local currentDeviceId for proper persistence
       String? currentId = state.currentDeviceId;
@@ -145,11 +147,41 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         emit(state.copyWith(currentDeviceId: currentId));
       }
 
-      // Use the chat's peer/current IDs so history queries line up
-      final peerId = state.recipientDeviceId;
+      // Peer id should come from the message sender if available
+      final peerId = message.senderDeviceId ?? state.recipientDeviceId;
+
+      // Try to resolve network id if we don't have one yet
+      if (networkId == null && peerId != null) {
+        networkId = await db.getNetworkIdByDeviceId(peerId);
+      }
+
+      // If we still don't know the network, we cannot persist safely
+      if (networkId == null) return message;
+
+      // Ensure the sender (peer) exists in Devices table so FK constraint won't fail
+      try {
+        await db.upsertDevice(
+          deviceId: peerId!,
+          networkId: networkId,
+          name: peerId,
+          status: 'Active',
+        );
+      } catch (_) {}
+
+      // Ensure local device exists in Devices table too
+      try {
+        final localUser = await db.getUserProfile(currentId!);
+        final localName = localUser?.name ?? 'Local Device';
+        await db.upsertDevice(
+          deviceId: currentId,
+          networkId: networkId,
+          name: localName,
+          status: 'Active',
+        );
+      } catch (_) {}
 
       final id = await db.insertMessage(
-        networkId: state.networkId!,
+        networkId: networkId,
         senderDeviceId: peerId,
         receiverDeviceId: currentId,
         messageContent: message.text,
