@@ -461,15 +461,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     emit(current.copyWith(maxConnections: max));
   }
 
-  /// Add a mock device for testing (debug only)
-  void addMockDevice() {
-    p2pService.addMockDevice(
-      name: 'Test Device ${DateTime.now().second}',
-      signalStrength: 75,
-      distance: '10m',
-    );
-  }
-
   @override
   Future<void> close() {
     _membersSubscription?.cancel();

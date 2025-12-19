@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
@@ -386,20 +385,6 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
                       tooltip: 'Broadcast',
                       onPressed: () => _showBroadcastDialog(context),
                     ),
-                    if (kDebugMode)
-                      IconButton(
-                        icon: const Icon(Icons.bug_report),
-                        tooltip: 'Add Mock Device (Debug)',
-                        onPressed: () {
-                          context.read<NetworkDashboardCubit>().addMockDevice();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Mock device added'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
                   ],
                 );
               },
