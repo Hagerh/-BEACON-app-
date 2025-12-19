@@ -12,7 +12,7 @@ class FooterWidget extends StatelessWidget {
     if (index == currentPage) return;
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, landingScreen);
+        Navigator.pushReplacementNamed(context, networkDashboardScreen);
         break;
       case 1:
         Navigator.pushReplacementNamed(context, resourceScreen);
@@ -20,7 +20,6 @@ class FooterWidget extends StatelessWidget {
       case 2:
         Navigator.pushReplacementNamed(context, profileScreen);
         break;
-     
     }
   }
 

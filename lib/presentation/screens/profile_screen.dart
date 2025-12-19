@@ -7,6 +7,7 @@ import 'package:projectdemo/presentation/widgets/profileImage_widget.dart';
 import 'package:projectdemo/presentation/widgets/userInfoCard_widget.dart';
 import 'package:projectdemo/presentation/widgets/voice_widget.dart';
 import 'package:projectdemo/presentation/routes/app_routes.dart';
+import 'package:projectdemo/presentation/widgets/footer_widget.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -29,6 +30,7 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, state) {
           return Scaffold(
             appBar: AppBar(
+              automaticallyImplyLeading: false,
               actions: [
                 IconButton(
                   icon: const Icon(Icons.home_outlined),
@@ -54,6 +56,7 @@ class ProfileScreen extends StatelessWidget {
             ),
             body: _buildBody(context, state),
             floatingActionButton: const VoiceWidget(),
+            bottomNavigationBar: const FooterWidget(currentPage: 2),
           );
         },
       ),

@@ -9,7 +9,8 @@ class UserinfocardWidget extends StatefulWidget {
   final String? bloodType;
   final bool editable;
   final String? emergencyContact;
-  final void Function(Map<String, String> data)? onSave; // Callback for save action
+  final void Function(Map<String, String> data)?
+  onSave; // Callback for save action
 
   const UserinfocardWidget({
     super.key,
@@ -18,7 +19,8 @@ class UserinfocardWidget extends StatefulWidget {
     this.phone,
     this.address,
     this.bloodType,
-    this.editable = true, this.onSave,
+    this.editable = true,
+    this.onSave,
     this.emergencyContact,
   });
 
@@ -43,7 +45,33 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
     _phoneController = TextEditingController(text: widget.phone ?? '');
     _addressController = TextEditingController(text: widget.address ?? '');
     _bloodTypeController = TextEditingController(text: widget.bloodType ?? '');
-    _emergencyContactController = TextEditingController(text: widget.emergencyContact ?? '');
+    _emergencyContactController = TextEditingController(
+      text: widget.emergencyContact ?? '',
+    );
+  }
+
+  @override
+  void didUpdateWidget(UserinfocardWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controllers when widget properties change (e.g., when profile loads)
+    if (widget.name != oldWidget.name) {
+      _nameController.text = widget.name ?? '';
+    }
+    if (widget.email != oldWidget.email) {
+      _emailController.text = widget.email ?? '';
+    }
+    if (widget.phone != oldWidget.phone) {
+      _phoneController.text = widget.phone ?? '';
+    }
+    if (widget.address != oldWidget.address) {
+      _addressController.text = widget.address ?? '';
+    }
+    if (widget.bloodType != oldWidget.bloodType) {
+      _bloodTypeController.text = widget.bloodType ?? '';
+    }
+    if (widget.emergencyContact != oldWidget.emergencyContact) {
+      _emergencyContactController.text = widget.emergencyContact ?? '';
+    }
   }
 
   @override
@@ -135,7 +163,7 @@ class _UserinfocardWidgetState extends State<UserinfocardWidget> {
                 },
               ),
               const SizedBox(height: 16),
-                 TextFormField(
+              TextFormField(
                 controller: _emergencyContactController,
                 enabled: widget.editable,
                 decoration: InputDecoration(

@@ -49,7 +49,7 @@ class P2PService {
   // messageId: local DB message id
   // delivered: whether message was delivered
   // Note: kept in this file for brevity; can be moved to a shared models file if needed
-  
+
   // DeliveryUpdate class defined below to avoid top-level changes
 
   // ---------------- SERVER METHODS ------------------
@@ -158,9 +158,9 @@ class P2PService {
 
     // Wait for connection to be established (members list updated)
     try {
-      await membersStream.firstWhere(
-        (members) => members.isNotEmpty,
-      ).timeout(const Duration(seconds: 15));
+      await membersStream
+          .firstWhere((members) => members.isNotEmpty)
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
       disconnect();
       throw Exception('Connection timed out');
@@ -273,7 +273,7 @@ class P2PService {
           break;
 
         case "private":
-         /* Only deliver if this client is the intended recipient
+          /* Only deliver if this client is the intended recipient
           if (data["to"] == currentUser!.deviceId) {
             final senderId = data["from"]?.toString();
             final mid = data['mid'] as int?;
@@ -306,11 +306,11 @@ class P2PService {
               ),
             );
           }*/
-            //     if (data["to"] == currentUser!.deviceId) {
-            // debugPrint('🥶✅ Private message is for me! Adding to stream');
+          //     if (data["to"] == currentUser!.deviceId) {
+          // debugPrint('🥶✅ Private message is for me! Adding to stream');
           // Fix: Trust the transport layer. If we received a private message via sendTextToClient,
           // it is intended for us, even if the P2P Plugin ID doesn't match our App Device ID.
-            
+
           _messagesController.add(
             Message(
               text: data["message"],

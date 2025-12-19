@@ -13,6 +13,7 @@ import 'package:projectdemo/presentation/widgets/info_summary.dart';
 import 'package:projectdemo/presentation/widgets/quick_message.dart';
 import 'package:projectdemo/presentation/widgets/broadcast_dialog.dart';
 import 'package:projectdemo/presentation/screens/network_settings_screen.dart';
+import 'package:projectdemo/presentation/widgets/footer_widget.dart';
 
 class NetworkDashboardScreen extends StatefulWidget {
   final String networkName;
@@ -50,7 +51,8 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
       );
 
       if (match.id.isNotEmpty) {
-        _localSummary = 'Last seen ${match.lastSeen} • ${match.connectors} devices';
+        _localSummary =
+            'Last seen ${match.lastSeen} • ${match.connectors} devices';
         if (mounted) setState(() {});
       }
     } catch (_) {}
@@ -136,7 +138,9 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
         'color': device.color,
         'status': device.status,
         'deviceId': device.deviceId,
-        'networkId': dashboardState is NetworkDashboardLoaded ? dashboardState.networkId : null,
+        'networkId': dashboardState is NetworkDashboardLoaded
+            ? dashboardState.networkId
+            : null,
       },
     );
   }
@@ -470,21 +474,11 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          FloatingActionButton(
-            onPressed: () {
-              Navigator.pushNamed(context, "/resources");
-            },
-            backgroundColor: AppColors.buttonPrimary,
-            heroTag: 'resourcesBtn',
-            child: const Icon(
-              Icons.folder_shared,
-              color: AppColors.primaryBackground,
-            ),
-          ),
           const SizedBox(height: 12),
           const VoiceWidget(),
         ],
       ),
+      bottomNavigationBar: const FooterWidget(currentPage: 0),
     );
   }
 }

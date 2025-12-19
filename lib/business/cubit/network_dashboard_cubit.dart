@@ -64,7 +64,9 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       int? networkId = network == null ? null : network['network_id'] as int?;
 
       // If host and no network exists locally, create it and upsert host device
-      if (networkId == null && p2pService.isHost && p2pService.currentUser != null) {
+      if (networkId == null &&
+          p2pService.isHost &&
+          p2pService.currentUser != null) {
         try {
           networkId = await db.createNetwork(
             networkName: networkName,
@@ -281,11 +283,11 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     if (!current.isServer) return;
 
     try {
-
       // Stop the P2P network
       await p2pService.stopNetwork();
       // If we were host, delete the network from local DB to clean up
-      if (state is NetworkDashboardLoaded && (state as NetworkDashboardLoaded).isServer) {
+      if (state is NetworkDashboardLoaded &&
+          (state as NetworkDashboardLoaded).isServer) {
         final s = state as NetworkDashboardLoaded;
         try {
           if (s.networkId != null && p2pService.currentUser != null) {
@@ -299,7 +301,8 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
 
       // Ensure P2P cleanup for all participants and stop listening locally.
       try {
-        await p2pService.leaveNetwork(); // client-side disconnect (no-op for host)
+        await p2pService
+            .leaveNetwork(); // client-side disconnect (no-op for host)
       } catch (_) {}
 
       stopListening();

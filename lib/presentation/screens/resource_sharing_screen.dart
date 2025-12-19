@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
-
-
+import 'package:projectdemo/presentation/widgets/footer_widget.dart';
 
 class ResourceOffer {
   final String id;
@@ -113,6 +111,7 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text("Resource Sharing"),
         elevation: 0,
         flexibleSpace: Container(
@@ -148,10 +147,9 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
         icon: const Icon(Icons.add),
         backgroundColor: Colors.teal,
       ),
+      bottomNavigationBar: const FooterWidget(currentPage: 1),
     );
   }
-
-  // --- WIDGETS ---
 
   Widget _buildCategoryFilter() {
     return Container(
