@@ -445,11 +445,9 @@ class DatabaseHelper {
     });
   }
 
-  // Delete a device; if it is the host, delete its network (cascades devices/resources/messages)
-  //todo isHost
   Future<void> deleteDevice(String deviceId) async {
     final db = await instance.database;
-    await db.transaction((txn) async {
+    await db.transaction(txn) async {
       final rows = await txn.query(
         'Devices',
         where: 'device_id = ?',
@@ -459,30 +457,6 @@ class DatabaseHelper {
       if (rows.isEmpty) return;
 
       final device = rows.first;
-      final isHost = (device['is_host'] is int)
-          ? (device['is_host'] as int) == 1
-          : device['is_host'] == true;
-      final networkId = device['network_id'] as int?;
-
-      // If this is a non-host device that is leaving, delete all messages
-      // involving it in this network so its chat history is purged.
-      if (!isHost && networkId != null) {
-        await txn.delete(
-          'Messages',
-          where:
-              'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
-          whereArgs: [networkId, deviceId, deviceId],
-        );
-      }
-
-      if (isHost && networkId != null) {
-        // Delete network; ON DELETE CASCADE removes its devices/resources/messages
-        await txn.delete(
-          'Networks',
-          where: 'network_id = ?',
-          whereArgs: [networkId],
-        );
-      } else {
         // Just delete the device
         await txn.delete(
           'Devices',
@@ -490,37 +464,7 @@ class DatabaseHelper {
           whereArgs: [deviceId],
         );
       }
-    });
-  }
-
-  // Delete a network by id, only if requester is the host (cascades to devices/resources/messages)
-  Future<void> deleteNetwork({
-    required int networkId,
-    required String requesterDeviceId,
-  }) async {
-    final db = await instance.database;
-
-    await db.transaction((txn) async {
-      final networks = await txn.query(
-        'Networks',
-        where: 'network_id = ?',
-        whereArgs: [networkId],
-        limit: 1,
-      );
-      if (networks.isEmpty) return;
-
-      final hostId = networks.first['host_device_id']?.toString();
-      if (hostId != null && hostId != requesterDeviceId) {
-        throw Exception('Only the host device can delete this network');
-      }
-
-      await txn.delete(
-        'Networks',
-        where: 'network_id = ?',
-        whereArgs: [networkId],
-      );
-    });
-  }
+    };
 
   // Add a resource provided by a device to a network
   Future<int> addResource({
