@@ -40,6 +40,7 @@ class PrivatechatScreen extends StatelessWidget {
     final String avatar = deviceInfo?['avatar'] ?? 'U';
     final Color avatarColor = deviceInfo?['color'] ?? Colors.blue;
     final String status = deviceInfo?['status'] ?? 'Online';
+    final String deviceId = deviceInfo?['deviceId'] ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -62,10 +63,12 @@ class PrivatechatScreen extends StatelessWidget {
                 InkWell(
                   borderRadius: BorderRadius.circular(24),
                   onTap: () {
-                    // Navigate to the user's profile screen using named route and pass device info
+                    // Navigate to peer's profile with deviceId to load full profile
                     Navigator.of(context).pushNamed(
                       "/profile",
                       arguments: {
+                        'deviceId': deviceId,
+                        'isSelf': false, // Viewing peer's profile
                         'name': userName,
                         'avatar': avatar,
                         'color': avatarColor,
@@ -138,10 +141,7 @@ class PrivatechatScreen extends StatelessWidget {
 
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryBackground,
-
-            ),
+            decoration: BoxDecoration(color: AppColors.secondaryBackground),
             child: SafeArea(
               child: Row(
                 children: [

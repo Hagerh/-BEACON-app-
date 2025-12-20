@@ -8,7 +8,6 @@ import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
 
-
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   final P2PService p2pService;
   StreamSubscription<List<DeviceDetail>>? _membersSubscription;
@@ -88,6 +87,9 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           debugPrint('Failed to persist created network (local mirror): $e');
         }
       }
+
+      // Broadcast profile to all peers when joining network
+      p2pService.broadcastProfile();
 
       // If we already have members, emit initial state immediately
       if (p2pService.members.isNotEmpty) {

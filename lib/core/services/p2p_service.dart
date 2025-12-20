@@ -7,6 +7,7 @@ import 'package:flutter_p2p_connection/flutter_p2p_connection.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/data/local/database_helper.dart';
 
 class P2PService {
   FlutterP2pHost? _host;
@@ -230,6 +231,28 @@ class P2PService {
     });
   }
 
+  // Broadcast current user's profile to all peers
+  void broadcastProfile() {
+    if (currentUser == null) return;
+
+    final String fromId = _myP2pId ?? currentUser!.deviceId;
+    final Map<String, dynamic> pkt = {
+      "type": "profile",
+      "from": fromId,
+      "fromAppId": currentUser!.deviceId,
+      "name": currentUser!.name,
+      "email": currentUser!.email,
+      "phone": currentUser!.phone,
+      "address": currentUser!.address,
+      "bloodType": currentUser!.bloodType,
+      "emergencyContact": currentUser!.emergencyContact,
+      "avatar": currentUser!.avatarLetter,
+      "color": currentUser!.avatarColor.value.toString(),
+      "status": currentUser!.status,
+    };
+    _sendToAll(pkt);
+  }
+
   // ---------------- LOW-LEVEL SEND HELPERS ------------------
 
   void _sendToAll(Map pkt) {
@@ -304,9 +327,44 @@ class P2PService {
             disconnect();
           }
           break;
+
+        case "profile":
+          // Receive peer's profile data and save to database
+          await _handleProfileUpdate(data);
+          break;
       }
     } catch (e) {
       debugPrint("Error handling incoming packet: $e");
+    }
+  }
+
+  // Handle incoming profile data from peers
+  Future<void> _handleProfileUpdate(Map<String, dynamic> data) async {
+    try {
+      final deviceId = data["fromAppId"]?.toString();
+      if (deviceId == null) return;
+
+      // Don't save our own profile
+      if (deviceId == currentUser?.deviceId) return;
+
+      // Create UserProfile from received data
+      final profile = UserProfile(
+        name: data["name"]?.toString() ?? "Unknown",
+        email: data["email"]?.toString() ?? "",
+        phone: data["phone"]?.toString() ?? "",
+        address: data["address"]?.toString() ?? "",
+        bloodType: data["bloodType"]?.toString() ?? "",
+        emergencyContact: data["emergencyContact"]?.toString() ?? "",
+        avatarLetter: data["avatar"]?.toString() ?? "?",
+        avatarColor: Color(int.parse(data["color"]?.toString() ?? "0")),
+        status: data["status"]?.toString() ?? "Idle",
+        deviceId: deviceId,
+      );
+
+      // Save to database
+      await DatabaseHelper.instance.saveUserProfile(profile);
+    } catch (e) {
+      debugPrint("❌ Error handling profile update: $e");
     }
   }
 
@@ -402,8 +460,8 @@ class P2PService {
   }) {
     final mockDevice = DeviceDetail(
       name: name ?? 'Mock Device',
-      deviceId: deviceId ??
-          'mock-device-${DateTime.now().millisecondsSinceEpoch}',
+      deviceId:
+          deviceId ?? 'mock-device-${DateTime.now().millisecondsSinceEpoch}',
       status: status,
       unread: 0,
       signalStrength: signalStrength,
@@ -418,7 +476,9 @@ class P2PService {
     // Emit updated list to trigger cubit updates
     _membersController.add(List.unmodifiable(_members));
 
-    debugPrint('✅ Mock device added: ${mockDevice.name} (${mockDevice.deviceId})');
+    debugPrint(
+      '✅ Mock device added: ${mockDevice.name} (${mockDevice.deviceId})',
+    );
   }
 
   /// Remove a mock device (debug only)
@@ -426,7 +486,7 @@ class P2PService {
     final initialLength = _members.length;
     _members.removeWhere((d) => d.deviceId == deviceId);
     final removed = initialLength - _members.length;
-    
+
     if (removed > 0) {
       _membersController.add(List.unmodifiable(_members));
       debugPrint('🗑️ Mock device removed: $deviceId');

@@ -80,7 +80,7 @@ class _LandingScreenState extends State<LandingScreen> {
                       tooltip: 'Profile',
 
                       onPressed: () {
-                        Navigator.pushReplacementNamed(context, "/profile");
+                        Navigator.pushNamed(context, "/profile");
                       },
                     ),
                   ],
@@ -126,7 +126,7 @@ class _LandingScreenState extends State<LandingScreen> {
                             leading: const Icon(Icons.person_outline),
                             title: const Text("Profile"),
                             onTap: () {
-                              Navigator.pushReplacementNamed(
+                              Navigator.pushNamed(
                                 context,
                                 "/profile",
                               );

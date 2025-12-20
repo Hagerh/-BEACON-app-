@@ -79,7 +79,8 @@ class MyApp extends StatelessWidget {
                   as Map<String, dynamic>?;
 
           return BlocProvider(
-            create: (context) => ProfileCubit()..loadProfile(args),
+            create: (context) =>
+                ProfileCubit(p2pService: p2pService)..loadProfile(args),
             child: const ProfileScreen(),
           );
         },
@@ -89,7 +90,8 @@ class MyApp extends StatelessWidget {
                   as Map<String, dynamic>?;
 
           return BlocProvider(
-            create: (context) => ProfileCubit()..loadProfile(args),
+            create: (context) =>
+                ProfileCubit(p2pService: p2pService)..loadProfile(args),
             child: const NetworkProfileScreen(),
           );
         },

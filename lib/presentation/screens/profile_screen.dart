@@ -31,16 +31,14 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, state) {
           return Scaffold(
             appBar: AppBar(
-              automaticallyImplyLeading: false,
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.home_outlined),
-                  tooltip: 'Home',
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, landingScreen);
-                  },
-                ),
-              ],
+              // Show back button instead of home button
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
               title: const Text("Profile"),
               flexibleSpace: Container(
                 decoration: const BoxDecoration(
