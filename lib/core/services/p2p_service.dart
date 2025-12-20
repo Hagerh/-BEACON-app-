@@ -299,6 +299,24 @@ class P2PService {
     });
   }
 
+  void notifyInactive() {
+    _sendToAll({
+      "type": "inactive_notify",
+      "from": _myP2pId,
+      "to": "ALL",
+      "message": "inactive",
+    });
+  }
+
+  void notifyActive() {
+    _sendToAll({
+      "type": "active_notify",
+      "from": _myP2pId,
+      "to": "ALL",
+      "message": "active",
+    });
+  }
+
   // // Lightweight UUID broadcast to ensure mapping
   // void broadcastHandshake() {
   //   if (currentUser == null) return;
@@ -412,6 +430,11 @@ class P2PService {
           // Receive peer's profile data and save to database
           await _handleProfileUpdate(data);
           break;
+
+        case "inactive_notify":
+          break;
+        case "active_notify":
+          break;
       }
     } catch (e) {
       debugPrint("Error handling incoming packet: $e");
@@ -503,6 +526,11 @@ class P2PService {
     //   }
 
     _membersController.add(List.unmodifiable(_members));
+  }
+
+  List<String> getMembersInNetwork() {
+    List<String> deviceIds = _members.map((e) => e.deviceId).toList();
+    return deviceIds;
   }
 
   // ---------------- DISCONNECT ------------------
