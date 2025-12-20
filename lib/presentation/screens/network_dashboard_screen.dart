@@ -50,15 +50,18 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   Future<void> _loadLocalNetworkSummary() async {
     try {
       final db = DatabaseHelper.instance;
-      final network = await db.getNetworkByName(widget.networkName);
-      if (network == null) return;
-      final nid = network['network_id'] as int?;
+      final nid = await db.getNetworkIdByDeviceId(widget.networkName);
       if (nid == null) return;
 
       final summaries = await db.fetchNetworkSummaries();
       final match = summaries.firstWhere(
         (d) => d.id == nid.toString(),
-        orElse: () => Device(id: '', status: '', connectors: 0, network_name: ''), //todo db
+        orElse: () => Device(
+          id: '',
+          status: '',
+          connectors: 0,
+          network_name: '',
+        ), //todo db
       );
 
       if (match.id.isNotEmpty) {
@@ -148,11 +151,6 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
   }
 
   void _openPrivateChat(BuildContext context, DeviceDetail device) {
-    // Mark messages as read
-    context.read<NetworkDashboardCubit>().markDeviceMessagesAsRead(
-      device.deviceId,
-    );
-
     final dashboardState = context.read<NetworkDashboardCubit>().state;
 
     Navigator.pushNamed(

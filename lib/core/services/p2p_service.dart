@@ -569,7 +569,9 @@ class P2PService {
     // _membersController.add(List.unmodifiable(_members));
 
     for (var client in clients) {
-      debugPrint("🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})");
+      debugPrint(
+        "🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})",
+      );
       if (_members.any((m) => m.deviceId == client.id)) continue;
 
       _members.add(
@@ -591,7 +593,7 @@ class P2PService {
       //   newToNetwork = false;
       //   debugPrint("💃 Host P2P ID assigned during sync: $_myP2pId");
       // }
-      
+
       if (isHost) {
         notificationService.showDeviceJoinedNotification(deviceName: client.username, deviceId: client.id);
         assignP2pId(client.id);

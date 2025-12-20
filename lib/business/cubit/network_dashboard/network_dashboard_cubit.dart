@@ -59,15 +59,11 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       final db = DatabaseHelper.instance;
 
-      // Try to resolve network id in local DB
-      final network = await db.getNetworkByName(networkName);
-      int? networkId = network == null ? null : network['network_id'] as int?;
-
       // If no network exists locally, create a local record so that messages
       // can be persisted on this device as well (host and clients).
-      if (networkId == null && p2pService.currentUser != null) {
+      if (p2pService.currentUser != null) {
         try {
-          networkId = await db.createNetwork(
+          final networkId = await db.createNetwork(
             networkName: networkName,
             hostDeviceId: p2pService.currentUser!.deviceId,
           );
@@ -75,7 +71,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           // Ensure *this* device exists in the local DB.
           await db.upsertDevice(
             deviceId: p2pService.currentUser!.deviceId,
-            networkId: networkId,
             name: p2pService.currentUser!.name,
             status: p2pService.currentUser!.status,
             isHost: p2pService.isHost ? 1 : 0,
@@ -99,7 +94,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
             isServer: p2pService.isHost,
             connectedDevices: p2pService.members,
             maxConnections: p2pService.maxMembers,
-            networkId: networkId,
           ),
         );
       }
@@ -114,7 +108,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
 
           final db = DatabaseHelper.instance;
 
-          if (networkId != null) {
+          if (p2pService.currentUser != null) {
             for (var member in members) {
               // Always update timestamps
               await db.updateDeviceLastSeen(member.deviceId);
@@ -141,12 +135,12 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                         .firstWhere((d) => d.deviceId == member.deviceId);
                     if (currentDevice.status != member.status ||
                         currentDevice.name != member.name ||
-                        currentDevice.signalStrength != member.signalStrength 
+                        currentDevice.signalStrength != member.signalStrength
                     //     || currentDevice.distance != member.distance
                     ) {
-                       hasChanges = true;
-                       break;
-                     }
+                      hasChanges = true;
+                      break;
+                    }
                   } catch (e) {
                     // Device not found in current state, treat as change
                     hasChanges = true;
@@ -164,7 +158,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
               for (var member in members) {
                 await db.upsertDevice(
                   deviceId: member.deviceId,
-                  networkId: networkId,
                   name: member.name,
                   status: member.status,
                   signalStrength: member.signalStrength,
@@ -175,9 +168,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
               }
             }
 
-            // Always read from DB to get updated timestamps
-            final devices = await db.getDevicesByNetworkId(networkId);
-
+            final devices = p2pService.members;
             // Only emit if state actually changed
             // Reuse currentState from earlier check (state won't change in same function)
             if (currentState is! NetworkDashboardLoaded) {
@@ -188,7 +179,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   isServer: p2pService.isHost,
                   connectedDevices: devices, // Includes updated timestamps
                   maxConnections: p2pService.maxMembers,
-                  networkId: networkId,
                 ),
               );
             } else if (currentState.connectedDevices.length != devices.length ||
@@ -203,7 +193,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   isServer: p2pService.isHost,
                   connectedDevices: devices, // Includes updated timestamps
                   maxConnections: p2pService.maxMembers,
-                  networkId: networkId,
                 ),
               );
             }
@@ -261,9 +250,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           try {
             final s = state;
             if (s is NetworkDashboardLoaded && s.networkId != null) {
-              final db = DatabaseHelper.instance;
-              // Refresh devices from DB which may have updated unread counts
-              final devices = await db.getDevicesByNetworkId(s.networkId!);
+              final devices = p2pService.members;
               emit(s.copyWith(connectedDevices: devices));
             }
           } catch (_) {}
@@ -285,18 +272,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     _messagesSubscription = null;
   }
 
-  // Mark messages from a device as read
-  void markDeviceMessagesAsRead(String deviceId) {
-    if (state is NetworkDashboardLoaded) {
-      final currentState = state as NetworkDashboardLoaded;
-      emit(currentState.updateDevice(deviceId, unread: 0));
-      // Persist unread reset in DB
-      try {
-        DatabaseHelper.instance.resetDeviceUnread(deviceId);
-      } catch (_) {}
-    }
-  }
-
   // Broadcast a message to all members in the network
   Future<void> broadcastMessage(String message) async {
     try {
@@ -308,7 +283,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
             await db.insertMessage(
-              networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: null,
               messageContent: message,
@@ -337,7 +311,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
             final sender = p2pService.currentUser?.deviceId;
             final db = DatabaseHelper.instance;
             await db.insertMessage(
-              networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: deviceId,
               messageContent: message,
@@ -402,6 +375,10 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
 
       // Stop the P2P network
       await p2pService.stopNetwork();
+
+      for (var member in p2pService.members) {
+        await DatabaseHelper.instance.deleteDevice(member.deviceId);
+      }
 
       // If we were host, delete the network from local DB to clean up
       if (current.isServer &&
