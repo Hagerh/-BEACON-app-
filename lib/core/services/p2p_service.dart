@@ -25,6 +25,7 @@ class P2PService {
   UserProfile? currentUser;
   bool isScanning = false;
   bool newToNetwork = true;
+  bool flag = false;
 
   int? _maxMembers;
   int? get maxMembers => _maxMembers;
@@ -158,6 +159,7 @@ class P2PService {
   }
 
   String getHostP2pId(List<P2pClientInfo> clients) {
+    debugPrint("🧹Entered");
     String hostId = '';
     for (var client in clients) {
       debugPrint(
@@ -480,7 +482,7 @@ class P2PService {
           final String? assignedId = data["message"]?.toString();
           debugPrint("👺 assign");
           debugPrint(_myP2pId);
-          if (_myP2pId == "HOST") {
+          if (_myP2pId == null || _myP2pId == "HOST") {
             _myP2pId = assignedId;
             debugPrint("👺 Assigned P2P ID: $_myP2pId");
             if (isHost) {
@@ -551,13 +553,15 @@ class P2PService {
 
     debugPrint("🐾 host: ${isHost}");
     debugPrint("🐾 new: ${newToNetwork}");
+    debugPrint("🐾 clients count: ${clients.length}");
 
     if (!isHost) {
-      if (newToNetwork) {
+      if (clients.length == 1 && newToNetwork && !flag) {
         String host_id = getHostP2pId(clients);
         debugPrint("🐾 Host P2P ID assigned during sync: $host_id");
         assignP2pId(host_id);
         newToNetwork = false;
+        flag = true;
       }
     }
 
@@ -617,6 +621,8 @@ class P2PService {
     currentUser = null;
     _maxMembers = null;
     isScanning = false;
+    newToNetwork = true;
+    flag = false;
 
     _members.clear();
     _membersController.add(List.unmodifiable(_members));
