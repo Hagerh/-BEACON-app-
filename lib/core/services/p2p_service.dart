@@ -13,11 +13,20 @@ class P2PService {
   FlutterP2pHost? _host;
   FlutterP2pClient? _client;
 
+  String? _myP2pId;
+  String? get myP2pId => _myP2pId;
+
   bool isHost = false;
   UserProfile? currentUser;
-  int? _maxMembers;
   bool isScanning = false;
+  bool newNetwork = true;
 
+  int? _maxMembers;
+  int? get maxMembers => _maxMembers;
+  String? _netwrokName; //todo
+  String? get networkName => null; //todo
+
+  int lastClientCount = -1;
   // Discovered devices
   final _discoveryController =
       StreamController<List<BleDiscoveredDevice>>.broadcast();
@@ -50,7 +59,20 @@ class P2PService {
       _host!.streamReceivedTexts().listen(_handleIncomingPacket);
 
       _host!.streamClientList().listen((clients) {
+        if (clients.length == lastClientCount) return;
+
+        lastClientCount = clients.length;
         _syncMembersFromClientList(clients);
+
+        //todo
+        // // Broadcast profile when new members join so they know who Host is
+        // if (clients.length > lastClientCount) {
+        //   // Future.delayed(
+        //   //   const Duration(milliseconds: 500),
+        //   //   broadcastHandshake,
+        //   // ); // Fast handshake first
+        //   // Future.delayed(const Duration(seconds: 1), broadcastProfile);
+        // }
       });
     } catch (e) {
       debugPrint("❌ Failed to initialize server at some step: $e");
@@ -61,25 +83,25 @@ class P2PService {
   Future<void> createNetwork({required String name, required int max}) async {
     //todo name?
     try {
-      _maxMembers = max;
+      _maxMembers = max; //todo netwrok name
 
       // Create P2P group
       await _host!.createGroup(advertise: true);
+      _myP2pId = "HOST";
+      _registerHostAsMember();
     } catch (e) {
       debugPrint("Failed to create network: $e");
       rethrow;
     }
   }
 
-  /// Current maximum members allowed in this network (host side only).
-  int? get maxMembers => _maxMembers;
-
-  /// Update the maximum allowed members at runtime (host only).
-  /// This does not re-negotiate any underlying OS limits, it is an
-  /// app‑level guard enforced in `_syncMembersFromClientList`.
   void updateMaxMembers(int newMax) {
     if (newMax <= 0) return;
     _maxMembers = newMax;
+  }
+
+  void updateNetworkName(String newName) {
+    //todo network name?
   }
 
   Future<void> stopNetwork() async {
@@ -91,6 +113,7 @@ class P2PService {
             kickUser(member.deviceId);
           }
         }
+
         // Give time for kick messages to be sent
         await Future.delayed(const Duration(milliseconds: 200));
 
@@ -101,6 +124,39 @@ class P2PService {
     } finally {
       disconnect();
     }
+  }
+
+  void _registerHostAsMember() {
+    if (currentUser == null) return;
+
+    final hostEntry = DeviceDetail(
+      name: currentUser!.name,
+      deviceId: _myP2pId!,
+      status: "Active",
+      unread: 0,
+      signalStrength: 100,
+      distance: '--',
+      avatar: currentUser!.name.isNotEmpty ? currentUser!.name[0] : '?',
+      color: Colors.blue,
+    );
+
+    _members
+      ..clear()
+      ..add(hostEntry);
+
+    _membersController.add(List.unmodifiable(_members));
+  }
+
+  String getHostP2pId(List<P2pClientInfo> clients) {
+    String hostId = '';
+    for (var client in clients) {
+      if (client.isHost) {
+        hostId = client.id;
+        print("✅ Host P2P ID assigned: $hostId");
+        break;
+      }
+    }
+    return hostId;
   }
 
   // ---------------- CLIENT METHODS ------------------
@@ -142,23 +198,26 @@ class P2PService {
     await _client!.stopScan();
 
     _client!.connectWithDevice(device);
-    // Debounce state
-    int lastClientCount = -1;
 
-    // Listen to client list changes (automatic member management)
     _client!.streamClientList().listen((clients) {
-      // Debounce: verify if count actually changed
       if (clients.length == lastClientCount) return; //todo
       lastClientCount = clients.length;
 
       _syncMembersFromClientList(clients);
     });
 
-    // Wait for connection to be established (members list updated)
+    // Wait for connection to be established before proceeding to dashboard
     try {
       await membersStream
           .firstWhere((members) => members.isNotEmpty)
           .timeout(const Duration(seconds: 15));
+
+      //todo
+      // // 1. Handshake immediately so everyone gets our UUID mapping
+      // broadcastHandshake();
+
+      // // 2. Announce profile shortly after
+      // Future.delayed(const Duration(milliseconds: 500), broadcastProfile);
     } catch (e) {
       disconnect();
       throw Exception('Connection timed out');
@@ -197,11 +256,9 @@ class P2PService {
   // ---------------- HIGH-LEVEL SEND API ------------------
 
   void sendBroadcast(String text) {
-    final String fromId = _myP2pId ?? currentUser!.deviceId;
     final Map<String, dynamic> pkt = {
       "type": "broadcast",
-      "from": fromId,
-      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
+      "from": _myP2pId,
       "to": "ALL",
       "message": text,
       "senderName": currentUser!.name,
@@ -210,11 +267,13 @@ class P2PService {
   }
 
   void sendPrivate(String receiverId, String text) {
-    final String fromId = _myP2pId ?? currentUser!.deviceId;
+    debugPrint("🥸 Sending private message to $receiverId: $text");
+    debugPrint("My P2P ID: $_myP2pId");
+    debugPrint("Text: $text");
+
     final Map<String, dynamic> pkt = {
       "type": "private",
-      "from": fromId,
-      "fromAppId": currentUser!.deviceId, // Add app UUID for reverse lookup
+      "from": _myP2pId,
       "to": receiverId,
       "message": text,
       "senderName": currentUser!.name,
@@ -225,11 +284,33 @@ class P2PService {
   void kickUser(String userId) {
     _sendToOne(userId, {
       "type": "kick",
-      "from": currentUser!.deviceId,
+      "from": _myP2pId,
       "to": userId,
       "message": "removed by server",
     });
   }
+
+  void assignP2pId(String userId) {
+    _sendToOne(userId, {
+      "type": "p2p_id_assign",
+      "from": _myP2pId,
+      "to": userId,
+      "message": userId,
+    });
+  }
+
+  // // Lightweight UUID broadcast to ensure mapping
+  // void broadcastHandshake() {
+  //   if (currentUser == null) return;
+
+  //   final String fromId = _myP2pId ?? currentUser!.deviceId;
+  //   final Map<String, dynamic> pkt = {
+  //     "type": "handshake",
+  //     "from": fromId,
+  //     "fromAppId": currentUser!.deviceId,
+  //   };
+  //   _sendToAll(pkt);
+  // }
 
   // Broadcast current user's profile to all peers
   void broadcastProfile() {
@@ -280,16 +361,8 @@ class P2PService {
   Future<void> _handleIncomingPacket(String raw) async {
     try {
       Map<String, dynamic> data = jsonDecode(raw);
-
-      // Extract sender's P2P ID and app UUID
       final String? senderP2pId = data["from"]?.toString();
-      final String? senderAppId = data["fromAppId"]?.toString();
-
-      // Update mapping if both IDs are present
-      if (senderP2pId != null && senderAppId != null) {
-        _p2pIdToAppId[senderP2pId] = senderAppId;
-        _appIdToP2pId[senderAppId] = senderP2pId;
-      }
+      final String? receiverP2pId = data["to"]?.toString();
 
       switch (data["type"]) {
         case "broadcast":
@@ -299,7 +372,8 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: senderP2pId, // Use P2P ID for consistency
+              senderDeviceId: senderP2pId,
+              receiverDeviceId: 'ALL',
             ),
           );
           break;
@@ -311,7 +385,8 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: senderP2pId, // Use P2P ID for consistency
+              senderDeviceId: senderP2pId,
+              receiverDeviceId: receiverP2pId,
             ),
           );
           break;
@@ -320,12 +395,17 @@ class P2PService {
           disconnect();
           break;
 
-        case "network_full":
-          if (!isHost) {
-            // todo: Handle network full - maybe show error to user
-            debugPrint("Cannot join: ${data["message"]}");
-            disconnect();
-          }
+        // case "network_full":
+        //   if (!isHost) {
+        //     // todo: Handle network full - maybe show error to user
+        //     debugPrint("Cannot join: ${data["message"]}");
+        //     disconnect();
+        //   }
+        //   break;
+
+        case "p2p_id_assign":
+          final String? assignedId = data["message"]?.toString();
+          _myP2pId = assignedId;
           break;
 
         case "profile":
@@ -370,20 +450,6 @@ class P2PService {
 
   // ---------------- MEMBERS MANAGEMENT ------------------
 
-  // Current device's P2P ID (from the P2P library)
-  String? _myP2pId;
-  String? get myP2pId => _myP2pId;
-
-  // Mapping between P2P library IDs and app UUIDs
-  final Map<String, String> _p2pIdToAppId = {}; // p2pId -> appUuid
-  final Map<String, String> _appIdToP2pId = {}; // appUuid -> p2pId
-
-  /// Get the P2P library ID for a given app UUID
-  String? getP2pIdForAppId(String appId) => _appIdToP2pId[appId];
-
-  /// Get the app UUID for a given P2P library ID
-  String? getAppIdForP2pId(String p2pId) => _p2pIdToAppId[p2pId];
-
   void _syncMembersFromClientList(List<P2pClientInfo> clients) {
     // Check if network is full (server only, and only when a limit is set)
     final max = _maxMembers;
@@ -392,24 +458,22 @@ class P2PService {
       return;
     }
 
-    _members.clear();
+    // if (newNetwork) {
+    //   getHostP2pId(clients);
+    //   newNetwork = false;
+    // }
 
-    // Find current device's P2P ID in the client list
+    // _members.removeWhere((m) => m.deviceId == "NULL");
+    // _membersController.add(List.unmodifiable(_members));
+
     for (var client in clients) {
-      if ((isHost && client.isHost) ||
-          (!isHost && client.username == currentUser?.name)) {
-        _myP2pId = client.id;
-        // Map our own IDs
-        if (currentUser != null) {
-          _p2pIdToAppId[client.id] = currentUser!.deviceId;
-          _appIdToP2pId[currentUser!.deviceId] = client.id;
-        }
-      }
+      debugPrint("🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})");
+      if (_members.any((m) => m.deviceId == client.id)) continue;
 
       _members.add(
         DeviceDetail(
           name: client.username,
-          deviceId: client.id, // Use P2P ID as the primary ID in members list
+          deviceId: client.id,
           status: "Active",
           unread: 0,
           signalStrength: 100,
@@ -418,7 +482,25 @@ class P2PService {
           color: client.isHost ? Colors.blue : Colors.green,
         ),
       );
+
+      // if (newNetwork && client.isHost) {
+      //   assignP2pId(client.id);
+      //   newNetwork = false;
+      //   debugPrint("💃 Host P2P ID assigned during sync: $_myP2pId");
+      // }
+
+      if (isHost) {
+        assignP2pId(client.id);
+      }
     }
+    // if ((isHost && client.isHost) ||
+    //     (!isHost && client.username == currentUser?.name)) {
+    //   _myP2pId = client.id;
+    //   // Map our own IDs
+    //   if (currentUser != null) {
+    //     _p2pIdToAppId[client.id] = currentUser!.deviceId;
+    //     _appIdToP2pId[currentUser!.deviceId] = client.id;
+    //   }
 
     _membersController.add(List.unmodifiable(_members));
   }
@@ -436,9 +518,6 @@ class P2PService {
 
     _discoveryController.add([]);
 
-    // Clear ID mappings
-    _p2pIdToAppId.clear();
-    _appIdToP2pId.clear();
     _myP2pId = null;
 
     _host?.dispose();

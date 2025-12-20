@@ -38,6 +38,7 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       (message) async {
         // Only handle messages FROM the current chat peer
         // (not TO them - those are our outgoing messages)
+        debugPrint("🥰Received message in PrivateChatCubit: ${message.text} from ${message.senderDeviceId} and!! ${state.recipientDeviceId}");
         if (message.senderDeviceId != state.recipientDeviceId) {
           return; // Ignore messages from other peers
         }
