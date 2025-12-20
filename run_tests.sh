@@ -14,7 +14,7 @@ echo "   Date: $DATE" | tee -a $LOG_FILE
 echo "==========================================" | tee -a $LOG_FILE
 echo "" | tee -a $LOG_FILE
 
-# --- Clean Project ---
+# ---  Clean Project ---
 echo "[1/5] Cleaning project..." | tee -a $LOG_FILE
 flutter clean >> $LOG_FILE 2>&1
 flutter pub get >> $LOG_FILE 2>&1
@@ -48,23 +48,24 @@ if [ -z "$DEVICES" ]; then
 else
     echo "      Device found. Starting Video Recording..." | tee -a $LOG_FILE
     
-    # --- start recording ---
-    # This runs screenrecord on the android device in the background
-    adb shell screenrecord $DEVICE_PATH &
-    RECORDING_PID=$!  # Save the Process ID so we can stop it later
+    # --- start recording (Background Process) ---
+
+    adb shell screenrecord --size 1280x720 $DEVICE_PATH &
+    RECORDING_PID=$!  
     
     echo "      Running Integration Tests..." | tee -a $LOG_FILE
     flutter test integration_test >> $LOG_FILE 2>&1
     
-    # --- stop recording ---
+    # --- stop recording -----
     echo "      Tests Finished. Stopping Recording..." | tee -a $LOG_FILE
-    # Kill the background adb process (this stops the recording gracefully)
+    # Kill the background adb process (sends SIGINT to stop recording gracefully)
     kill -2 $RECORDING_PID 
     
-    # Wait a moment for the file to finalize on the device
-    sleep 3
+    #  Increased sleep to 10 seconds to ensure file finalizes correctly
+    echo "      Finalizing video file..." | tee -a $LOG_FILE
+    sleep 10
     
-    # --- pull video to computer ---
+    # --- pull file to computer ---
     echo "      Pulling video file to computer..." | tee -a $LOG_FILE
     adb pull $DEVICE_PATH ./$VIDEO_FILE >> $LOG_FILE 2>&1
     
