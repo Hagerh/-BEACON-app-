@@ -10,16 +10,59 @@ class FooterWidget extends StatelessWidget {
 
   void _onTapp(BuildContext context, int index) {
     if (index == currentPage) return;
+
+    String targetRoute;
     switch (index) {
       case 0:
-        Navigator.pushReplacementNamed(context, networkDashboardScreen);
+        targetRoute = networkDashboardScreen;
         break;
       case 1:
-        Navigator.pushReplacementNamed(context, resourceScreen);
+        targetRoute = resourceScreen;
         break;
       case 2:
-        Navigator.pushReplacementNamed(context, networkProfileScreen);
+        targetRoute = networkProfileScreen;
         break;
+      default:
+        return;
+    }
+
+    // Check if the target route already exists in the navigation stack
+    final navigator = Navigator.of(context);
+    bool routeExists = false;
+    navigator.popUntil((route) {
+      if (route.settings.name == targetRoute) {
+        routeExists = true;
+        return true; // Stop popping
+      }
+      return false; // Continue popping
+    });
+
+    if (routeExists) {
+      // Route exists, just pop to it (no need to push)
+      return;
+    }
+
+    // Route doesn't exist, push it without replacing
+    // But first, pop back to the dashboard if we're navigating away from it
+    if (currentPage == 0 && index != 0) {
+      // We're leaving dashboard, push the new route
+      Navigator.pushNamed(context, targetRoute);
+    } else if (currentPage != 0 && index == 0) {
+      // We're going back to dashboard, pop until we find it or push it
+      Navigator.popUntil(context, (route) {
+        if (route.settings.name == targetRoute) {
+          return true;
+        }
+        // If we reach the first route and dashboard wasn't found, stop
+        if (route.isFirst) {
+          Navigator.pushNamed(context, targetRoute);
+          return true;
+        }
+        return false;
+      });
+    } else {
+      // Navigating between non-dashboard screens
+      Navigator.pushNamed(context, targetRoute);
     }
   }
 
