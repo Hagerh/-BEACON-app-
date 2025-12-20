@@ -25,8 +25,8 @@ class _VoiceWidgetState extends State<VoiceWidget> {
 
   // Track if currently listening
   bool _isListening = false;
-// Track if processing a command
-  
+  // Track if processing a command
+
   bool _isProcessing = false;
 
   @override
@@ -37,12 +37,12 @@ class _VoiceWidgetState extends State<VoiceWidget> {
     _initTts();
   }
 
+  // Ensures clear, slow, and understandable speech
   Future<void> _initTts() async {
     await _flutterTts.setLanguage("en-US");
     await _flutterTts.setPitch(1.0);
     await _flutterTts.setSpeechRate(0.5);
-  
-    await _flutterTts.awaitSpeakCompletion(true);
+    await _flutterTts.awaitSpeakCompletion(true); // Waits for feadback to finish
   }
 
   Future<void> _speak(String text) async {
@@ -50,7 +50,6 @@ class _VoiceWidgetState extends State<VoiceWidget> {
       await _flutterTts.speak(text);
     }
   }
-
 
   void _toggleSession() {
     if (_isSessionActive) {
@@ -62,7 +61,7 @@ class _VoiceWidgetState extends State<VoiceWidget> {
 
   void _startSession() {
     setState(() => _isSessionActive = true);
-    _listen(); 
+    _listen();
   }
 
   void _stopSession() {
@@ -75,18 +74,15 @@ class _VoiceWidgetState extends State<VoiceWidget> {
     _flutterTts.stop();
   }
 
-
   void _listen() async {
     if (!_isSessionActive || _isProcessing) return;
 
     if (!_isListening) {
+      //return true if the microphone is usable
       bool available = await _speech.initialize(
         onStatus: (status) {
-          debugPrint('STT Status: $status');
-
           if (status == 'done' || status == 'notListening') {
             if (mounted) setState(() => _isListening = false);
-
             // Automatically restart if session is still active and we aren't processing a command
             if (_isSessionActive && !_isProcessing && mounted) {
               // Small delay to prevent tight loops
@@ -119,17 +115,20 @@ class _VoiceWidgetState extends State<VoiceWidget> {
       if (available) {
         if (mounted) setState(() => _isListening = true);
 
+        //This is where actual voice capture begins.
         _speech.listen(
           onResult: (val) {
-     
             if (val.finalResult && val.recognizedWords.isNotEmpty) {
               _processCommand(val.recognizedWords);
             }
           },
           listenFor: const Duration(seconds: 10),
           pauseFor: const Duration(seconds: 3),
+          // ignore: deprecated_member_use
           partialResults: false,
+          // ignore: deprecated_member_use
           cancelOnError: true,
+          // ignore: deprecated_member_use
           listenMode: stt.ListenMode.confirmation,
         );
       } else {
@@ -143,8 +142,8 @@ class _VoiceWidgetState extends State<VoiceWidget> {
     }
   }
 
-void _processCommand(String command) async {
-    _speech.stop();
+  void _processCommand(String command) async {
+    _speech.stop(); //disable listening while processing
     if (mounted) {
       setState(() {
         _isListening = false;
@@ -163,26 +162,22 @@ void _processCommand(String command) async {
         await _speak("Goodbye");
         _stopSession();
         return;
-      } 
-      
+      }
       // ---navigation commands---
-      
       else if (lowerCommand.contains("home") || lowerCommand == "go back") {
         if (currentRoute == landingScreen) {
-           await _speak("You are already on the Home screen");
+          await _speak("You are already on the Home screen");
         } else {
-           await _speak("Going Home");
-           if (mounted) {
-             Navigator.pushNamedAndRemoveUntil(
-               context,
-               landingScreen,
-               (route) => false,
-             );
-           }
+          await _speak("Going Home");
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              landingScreen,
+              (route) => false,
+            );
+          }
         }
-      } 
-      
-      else if (lowerCommand.contains("create network")) {
+      } else if (lowerCommand.contains("create network")) {
         //  Check if we are already here
         if (currentRoute == createNetworkScreen) {
           await _speak("You are already on the Create Network screen");
@@ -190,42 +185,33 @@ void _processCommand(String command) async {
           await _speak("Opening Create Network");
           if (mounted) Navigator.pushNamed(context, createNetworkScreen);
         }
-      } 
-      
-      else if (lowerCommand.contains("join network")) {
+      } else if (lowerCommand.contains("join network")) {
         if (currentRoute == networkScreen) {
-           await _speak("You are already on the Join Network screen");
+          await _speak("You are already on the Join Network screen");
         } else {
-           await _speak("Opening Join Network");
-           if (mounted) Navigator.pushNamed(context, networkScreen);
+          await _speak("Opening Join Network");
+          if (mounted) Navigator.pushNamed(context, networkScreen);
         }
-      } 
-      
-      else if (lowerCommand.contains("profile")) {
+      } else if (lowerCommand.contains("profile")) {
         if (currentRoute == profileScreen) {
-           await _speak("You are already on the Profile screen");
+          await _speak("You are already on the Profile screen");
         } else {
-           await _speak("Opening Profile");
-           if (mounted) Navigator.pushNamed(context, profileScreen);
+          await _speak("Opening Profile");
+          if (mounted) Navigator.pushNamed(context, profileScreen);
         }
-      } 
-      
-      else if (lowerCommand.contains("resources")) {
+      } else if (lowerCommand.contains("resources")) {
         if (currentRoute == resourceScreen) {
-           await _speak("You are already on the Resources screen");
+          await _speak("You are already on the Resources screen");
         } else {
-           await _speak("Opening Resources");
-           if (mounted) Navigator.pushNamed(context, resourceScreen);
+          await _speak("Opening Resources");
+          if (mounted) Navigator.pushNamed(context, resourceScreen);
         }
       }
-      
       // --- broadcast and chat commands ---
-      
-      
       else if (lowerCommand.contains("broadcast")) {
         final message = _extractMessage(lowerCommand, "broadcast");
         if (message.isNotEmpty) {
-          try {
+          try { //extract message after keyword
             final cubit = context.read<NetworkDashboardCubit>();
             cubit.broadcastMessage(message);
             await _speak("Broadcasting message: $message");
@@ -235,9 +221,7 @@ void _processCommand(String command) async {
         } else {
           await _speak("Say broadcast followed by your message.");
         }
-      } 
-      
-      else if (lowerCommand.startsWith("send")) {
+      } else if (lowerCommand.startsWith("send")) {
         final message = _extractMessage(lowerCommand, "send");
         if (message.isNotEmpty) {
           try {
@@ -249,9 +233,7 @@ void _processCommand(String command) async {
         } else {
           await _speak("Say send followed by your message.");
         }
-      } 
-      
-      else if (lowerCommand.contains("leave network")) {
+      } else if (lowerCommand.contains("leave network")) {
         try {
           await context.read<NetworkDashboardCubit>().leaveNetwork();
           await _speak("Leaving network");
@@ -301,7 +283,6 @@ void _processCommand(String command) async {
           ? AppColors.alertRed
           : (_isSessionActive ? Colors.green : AppColors.buttonPrimary),
       child: Icon(
-   
         _isListening
             ? Icons.mic
             : (_isSessionActive ? Icons.hearing : Icons.mic_none),

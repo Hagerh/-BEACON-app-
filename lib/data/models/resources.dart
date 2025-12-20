@@ -1,11 +1,11 @@
 import 'resource_offer.dart';
 
 class ResourceItem {
-  final String resourceId; // NEW: globally unique ID
+  final String resourceId; 
   final String name;
   final String category;
-  final String ownerDeviceId; // NEW: owner device ID
-  int version; // NEW: for conflict resolution
+  final String ownerDeviceId; 
+  int version; 
   final List<ResourceOffer> offers;
 
   ResourceItem({
