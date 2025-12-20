@@ -1,111 +1,157 @@
 import 'package:flutter/material.dart';
 import 'package:projectdemo/presentation/widgets/footer_widget.dart';
+import 'package:uuid/uuid.dart';
+import '../../data/models/resources.dart';
+import '../../data/models/resource_offer.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
+import '../../data/models/resource_request.dart';
+import '../../data/local/database_helper.dart';
 
-class ResourceOffer {
-  final String id;
-  final String providerName;
-  int quantity;
+// --- 1. P2P MODELS ---
 
-  ResourceOffer({
-    required this.id,
-    required this.providerName,
-    required this.quantity,
-  });
-}
-
-class ResourceItem {
-  final String name;
-  final String category;
-  final List<ResourceOffer> offers;
-
-  ResourceItem({
-    required this.name,
-    required this.category,
-    required this.offers,
-  });
-
-  int get totalQuantity => offers.fold(0, (sum, item) => sum + item.quantity);
-}
+// --- 3. RESOURCE MANAGER ---
 
 class ResourceManager {
-  // Pre-defined categories
   static final List<String> categories = [
     "All",
     "Medical",
-    "Amenities", // Fixed spelling
+    "Amenities",
     "Clothes",
     "Sanitary",
     "Other",
   ];
 
-  // In-memory storage mimicking a database
-  final List<ResourceItem> _items = [
-    ResourceItem(name: "Plasters", category: "Medical", offers: []),
-    ResourceItem(name: "Water Bottles", category: "Amenities", offers: []),
-    ResourceItem(name: "Blankets", category: "Clothes", offers: []),
-  ];
+  final List<ResourceItem> _items = [];
 
-  // Get items filtered by category
+  final P2PService p2pService;
+
+  ResourceManager({required this.p2pService}) {
+    // Listen to incoming P2P resources
+    //p2pService.onResourceReceived(_mergeIncomingResource);
+    p2pService.resourceStream.listen(_mergeIncomingResource);
+    //ResourceManager({required this.p2pService}) {
+    //  p2pService.resourceStream.listen(_mergeIncomingResource);
+    //}
+  }
+
   List<ResourceItem> getItems(String category) {
     if (category == "All") return _items;
     return _items.where((item) => item.category == category).toList();
   }
 
-  // Add an offer
-  void addOffer(
-    String category,
-    String resourceName,
-    String userName,
-    int qty,
-  ) {
-    // Check if resource exists
-    var existingItemIndex = _items.indexWhere((i) => i.name == resourceName);
+  void addOffer({
+    required String category,
+    required String resourceName,
+    required String userName,
+    required String deviceId,
+    required int qty,
+  }) {
+    var uuid = const Uuid();
+    var existingItemIndex = _items.indexWhere(
+      (i) => i.name == resourceName && i.ownerDeviceId == deviceId,
+    );
 
     if (existingItemIndex != -1) {
-      // Add offer to existing item
-      _items[existingItemIndex].offers.add(
+      var item = _items[existingItemIndex];
+      item.offers.add(
         ResourceOffer(
-          id: DateTime.now().toString(),
+          offerId: uuid.v4(),
+          providerDeviceId: deviceId,
           providerName: userName,
           quantity: qty,
         ),
       );
+      item.version++;
+      // Broadcast updated resource
+      p2pService.sendResource(item);
     } else {
-      // Create new item with the offer
-      _items.add(
-        ResourceItem(
-          name: resourceName,
-          category: category,
-          offers: [
-            ResourceOffer(
-              id: DateTime.now().toString(),
-              providerName: userName,
-              quantity: qty,
-            ),
-          ],
-        ),
+      var newItem = ResourceItem(
+        resourceId: uuid.v4(),
+        name: resourceName,
+        category: category,
+        ownerDeviceId: deviceId,
+        version: 1,
+        offers: [
+          ResourceOffer(
+            offerId: uuid.v4(),
+            providerDeviceId: deviceId,
+            providerName: userName,
+            quantity: qty,
+          ),
+        ],
       );
+      _items.add(newItem);
+      // Broadcast new resource
+      p2pService.sendResource(newItem);
+    }
+  }
+
+  void _mergeIncomingResource(ResourceItem incoming) {
+    var index = _items.indexWhere((i) => i.resourceId == incoming.resourceId);
+
+    if (index != -1) {
+      var existing = _items[index];
+      // Only update if incoming version is newer
+      if (incoming.version > existing.version) {
+        _items[index] = incoming;
+      }
+    } else {
+      _items.add(incoming);
     }
   }
 }
 
-// --- 3. UI SCREEN ---
+// --- 4. UI SCREEN ---
 
 class ResourceSharingScreen extends StatefulWidget {
-  final String loggedInUserName;
-  const ResourceSharingScreen({super.key, this.loggedInUserName = "Alice"});
+  final String deviceId;
+  final P2PService p2pService;
+
+  const ResourceSharingScreen({
+    super.key,
+    required this.deviceId,
+    required this.p2pService,
+  });
 
   @override
   State<ResourceSharingScreen> createState() => _ResourceSharingScreenState();
 }
 
 class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
-  final ResourceManager _dataManager = ResourceManager(); // Instance of logic
+  late final ResourceManager _dataManager;
   String _selectedCategory = "All";
+
+  String? _userName;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataManager = ResourceManager(p2pService: widget.p2pService);
+    _loadUser();
+
+    _dataManager.p2pService.resourceStream.listen((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> _loadUser() async {
+    final profile = await DatabaseHelper.instance.getUserProfile(
+      widget.deviceId,
+    );
+
+    setState(() {
+      _userName = profile?.name ?? "Unknown";
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Fetch data based on filter
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final displayedResources = _dataManager.getItems(_selectedCategory);
 
     return Scaffold(
@@ -124,10 +170,7 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
       ),
       body: Column(
         children: [
-          // --- Category Filter Chips ---
           _buildCategoryFilter(),
-
-          // --- Resource List ---
           Expanded(
             child: displayedResources.isEmpty
                 ? _buildEmptyState()
@@ -213,14 +256,31 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
               ),
               onPressed: offer.quantity > 0
                   ? () {
-                      setState(() {
-                        offer.quantity--;
-                        if (offer.quantity <= 0) {
-                          item.offers.remove(offer);
-                        }
-                      });
+                      // Create resource request object
+                      final request = ResourceRequest(
+                        resourceId: item.resourceId,
+                        offerId: offer.offerId,
+                        requestorDeviceId: widget.deviceId,
+                        requestorName: _userName!,
+                        quantity: 1, // You can allow user to select quantity
+                      );
+
+                      // Send request to the provider
+                      _dataManager.p2pService.sendResourceRequest(
+                        offer.providerDeviceId,
+                        request,
+                      );
+
+                      // Show confirmation to the user
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Request sent! Waiting for approval...",
+                          ),
+                        ),
+                      );
                     }
-                  : null,
+                  : null, // Disable if quantity is 0
               child: const Text("Request"),
             ),
           );
@@ -244,8 +304,6 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
       ),
     );
   }
-
-  // --- ADD OFFER LOGIC ---
 
   void _showAddOfferModal(BuildContext context) {
     String? selectedCategory;
@@ -281,7 +339,7 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
                   labelText: "Category",
                 ),
                 items: ResourceManager.categories
-                    .where((c) => c != "All") // Don't show "All" in dropdown
+                    .where((c) => c != "All")
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                     .toList(),
                 onChanged: (v) => selectedCategory = v,
@@ -309,15 +367,15 @@ class _ResourceSharingScreenState extends State<ResourceSharingScreen> {
                   if (selectedCategory != null &&
                       nameController.text.isNotEmpty &&
                       qtyController.text.isNotEmpty) {
-                    setState(() {
-                      _dataManager.addOffer(
-                        selectedCategory!,
-                        nameController.text.trim(),
-                        widget.loggedInUserName,
-                        int.parse(qtyController.text),
-                      );
-                    });
+                    _dataManager.addOffer(
+                      category: selectedCategory!,
+                      resourceName: nameController.text.trim(),
+                      userName: _userName!,
+                      deviceId: widget.deviceId,
+                      qty: int.parse(qtyController.text),
+                    );
                     Navigator.pop(context);
+                    setState(() {});
                   }
                 },
                 style: ElevatedButton.styleFrom(

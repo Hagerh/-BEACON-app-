@@ -58,13 +58,13 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
       final summaries = await db.fetchNetworkSummaries();
       final match = summaries.firstWhere(
         (d) => d.id == nid.toString(),
-        orElse: () => Device(id: '', lastSeen: '', status: '', connectors: 0),
+        orElse: () => Device(id: '', status: '', connectors: 0, network_name: ''), //todo db
       );
 
       if (match.id.isNotEmpty) {
         // Format last seen time to show date and time
-        String formattedDateTime = _formatDateTime(match.lastSeen);
-        _localSummary = 'Last Seen $formattedDateTime';
+        // String formattedDateTime = _formatDateTime(match.lastSeen); //todo db
+        // _localSummary = 'Last Seen $formattedDateTime';
         if (mounted) setState(() {});
       }
     } catch (_) {}
@@ -163,7 +163,7 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
         'avatar': device.avatar,
         'color': device.color,
         'status': device.status,
-        'deviceId': device.deviceId,
+        'deviceId': device.deviceId, //todo host ip
         'networkId': dashboardState is NetworkDashboardLoaded
             ? dashboardState.networkId
             : null,
