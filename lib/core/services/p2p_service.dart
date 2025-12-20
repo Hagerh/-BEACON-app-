@@ -21,7 +21,7 @@ class P2PService {
   bool isHost = false;
   UserProfile? currentUser;
   bool isScanning = false;
-  bool newNetwork = true;
+  bool newToNetwork = true;
 
   int? _maxMembers;
   int? get maxMembers => _maxMembers;
@@ -134,10 +134,10 @@ class P2PService {
 
   void _registerHostAsMember() {
     if (currentUser == null) return;
-
+    debugPrint("🥰${currentUser!.deviceId}");
     final hostEntry = DeviceDetail(
       name: currentUser!.name,
-      deviceId: _myP2pId!,
+      deviceId: "HOST",
       status: "Active",
       //unread: 0,
       signalStrength: 100,
@@ -157,6 +157,9 @@ class P2PService {
   String getHostP2pId(List<P2pClientInfo> clients) {
     String hostId = '';
     for (var client in clients) {
+      debugPrint(
+        "🧹Checking client: ${client.username} (ID: ${client.id}, Host: ${client.isHost})",
+      );
       if (client.isHost) {
         hostId = client.id;
         print("✅ Host P2P ID assigned: $hostId");
@@ -164,6 +167,27 @@ class P2PService {
       }
     }
     return hostId;
+  }
+
+  void updateHostDeviceId(String newId) {
+    final index = _members.indexWhere((d) => d.deviceId == "HOST");
+    if (index != -1) {
+      final current = _members[index];
+      _members[index] = DeviceDetail(
+        name: current.name,
+        deviceId: newId,
+        status: current.status,
+        //unread: current.unread,
+        signalStrength: current.signalStrength,
+        //distance: current.distance,
+        avatar: current.avatar,
+        color: current.color,
+        last_seen_at: current.last_seen_at,\
+      );
+
+      _membersController.add(List.unmodifiable(_members));
+      debugPrint('🔄 Host device ID updated: $newId');
+    }
   }
 
   // ---------------- CLIENT METHODS ------------------
@@ -277,6 +301,10 @@ class P2PService {
     debugPrint("🥸 Sending private message to $receiverId: $text");
     debugPrint("My P2P ID: $_myP2pId");
     debugPrint("Text: $text");
+
+    debugPrint("🐾Current User: ${currentUser?.name}");
+    debugPrint("🐾Current Id: ${currentUser?.deviceId}");
+    debugPrint("🐾${_myP2pId}");
 
     final Map<String, dynamic> pkt = {
       "type": "private",
@@ -447,7 +475,15 @@ class P2PService {
 
         case "p2p_id_assign":
           final String? assignedId = data["message"]?.toString();
-          _myP2pId = assignedId;
+          debugPrint("👺 assign");
+          debugPrint(_myP2pId);
+          if (_myP2pId == "HOST") {
+            _myP2pId = assignedId;
+            debugPrint("👺 Assigned P2P ID: $_myP2pId");
+            if (isHost) {
+              updateHostDeviceId(_myP2pId!);
+            }
+          }
           break;
 
         case "profile":
@@ -510,10 +546,17 @@ class P2PService {
       return;
     }
 
-    // if (newNetwork) {
-    //   getHostP2pId(clients);
-    //   newNetwork = false;
-    // }
+    debugPrint("🐾 host: ${isHost}");
+    debugPrint("🐾 new: ${newToNetwork}");
+
+    if (!isHost) {
+      if (newToNetwork) {
+        String host_id = getHostP2pId(clients);
+        debugPrint("🐾 Host P2P ID assigned during sync: $host_id");
+        assignP2pId(host_id);
+        newToNetwork = false;
+      }
+    }
 
     // _members.removeWhere((m) => m.deviceId == "NULL");
     // _membersController.add(List.unmodifiable(_members));
@@ -536,13 +579,14 @@ class P2PService {
         ),
       );
 
-      // if (newNetwork && client.isHost) {
+      // if (newToNetwork && client.isHost) {
       //   assignP2pId(client.id);
-      //   newNetwork = false;
+      //   newToNetwork = false;
       //   debugPrint("💃 Host P2P ID assigned during sync: $_myP2pId");
       // }
-
+      
       if (isHost) {
+        //showDeviceJoinedNotification(client.username, client.id); //todo notifications
         assignP2pId(client.id);
       }
     }

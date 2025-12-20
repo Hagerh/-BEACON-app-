@@ -42,6 +42,13 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   void _startListeningToMessages() {
     _messageSubscription = p2pService.messagesStream.listen(
       (message) async {
+        // Only handle messages FROM the current chat peer
+        // (not TO them - those are our outgoing messages)
+        debugPrint("🥰Received message in PrivateChatCubit: ${message.text} from ${message.senderDeviceId} and!! ${state.recipientDeviceId}");
+        if (message.senderDeviceId != state.recipientDeviceId) {
+          return; // Ignore messages from other peers
+        }
+
         try {
           // If the message is JSON and contains a type, handle as special request
           if (_isJson(message.text)) {
