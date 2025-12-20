@@ -33,23 +33,24 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
+  flutter_local_notifications: ^19.5.0
   flutter_p2p_connection: ^3.0.3
   flutter_secure_storage: ^9.0.0
   flutter_tts: ^4.2.3
   google_fonts: ^6.3.2
-
   path: ^1.8.4
+  permission_handler: ^11.3.1
   speech_to_text: ^7.3.0
   sqflite_sqlcipher: ^3.4.0
 
 dev_dependencies:
+  bloc_test: ^10.0.0
   flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
-  bloc_test: ^10.0.0
-  mocktail: ^1.0.4
   integration_test:
     sdk: flutter
+  mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
