@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 class Message {
   final int? messageId;
-  final int? networkId;
-  final String? senderDeviceId;
-  final String? receiverDeviceId;
+  final String? senderUserId; // Permanent user ID
+  final String? receiverUserId; // Permanent user ID (null for broadcast)
   final String text;
   final bool isMine;
   final TimeOfDay time;
@@ -13,9 +12,8 @@ class Message {
 
   Message({
     this.messageId,
-    this.networkId,
-    this.senderDeviceId,
-    this.receiverDeviceId,
+    this.senderUserId,
+    this.receiverUserId,
     required this.text,
     required this.isMine,
     required this.time,
@@ -26,15 +24,13 @@ class Message {
   Message copyWith({
     bool? isDelivered,
     int? messageId,
-    int? networkId,
-    String? senderDeviceId,
-    String? receiverDeviceId,
+    String? senderUserId,
+    String? receiverUserId,
   }) {
     return Message(
       messageId: messageId ?? this.messageId,
-      networkId: networkId ?? this.networkId,
-      senderDeviceId: senderDeviceId ?? this.senderDeviceId,
-      receiverDeviceId: receiverDeviceId ?? this.receiverDeviceId,
+      senderUserId: senderUserId ?? this.senderUserId,
+      receiverUserId: receiverUserId ?? this.receiverUserId,
       text: text,
       isMine: isMine,
       time: time,
@@ -48,15 +44,20 @@ class Message {
     final now = DateTime.now();
     return {
       if (messageId != null) 'message_id': messageId,
-      if (networkId != null) 'network_id': networkId,
-      'sender_device_id': senderDeviceId,
-      'receiver_device_id': receiverDeviceId,
+      'sender_user_id': senderUserId,
+      'receiver_user_id': receiverUserId,
       'message_content': text,
       'is_mine': isMine ? 1 : 0,
       'is_delivered': isDelivered ? 1 : 0,
-      'sent_at': sentAt?.toIso8601String() ??
-          DateTime(now.year, now.month, now.day, time.hour, time.minute)
-              .toIso8601String(),
+      'sent_at':
+          sentAt?.toIso8601String() ??
+          DateTime(
+            now.year,
+            now.month,
+            now.day,
+            time.hour,
+            time.minute,
+          ).toIso8601String(),
     };
   }
 
@@ -77,9 +78,8 @@ class Message {
         : m['is_delivered'] == true;
     return Message(
       messageId: m['message_id'] as int?,
-      networkId: m['network_id'] as int?,
-      senderDeviceId: m['sender_device_id']?.toString(),
-      receiverDeviceId: m['receiver_device_id']?.toString(),
+      senderUserId: m['sender_user_id']?.toString(),
+      receiverUserId: m['receiver_user_id']?.toString(),
       text: m['message_content']?.toString() ?? '',
       isMine: isMine,
       time: time,

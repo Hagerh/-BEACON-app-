@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
-import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
@@ -67,21 +66,24 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       // can be persisted on this device as well (host and clients).
       if (networkId == null && p2pService.currentUser != null) {
         try {
-          networkId = await db.createNetwork(
-            networkName: networkName,
-            hostDeviceId: p2pService.currentUser!.deviceId,
-          );
+          final currentDeviceId = p2pService.currentUser!.deviceId;
+          if (currentDeviceId != null) {
+            networkId = await db.createNetwork(
+              networkName: networkName,
+              hostDeviceId: currentDeviceId,
+            );
 
-          // Ensure *this* device exists in the local DB.
-          await db.upsertDevice(
-            deviceId: p2pService.currentUser!.deviceId,
-            networkId: networkId,
-            name: p2pService.currentUser!.name,
-            status: p2pService.currentUser!.status,
-            isHost: p2pService.isHost ? 1 : 0,
-            avatar: p2pService.currentUser!.avatarLetter,
-            color: p2pService.currentUser!.avatarColor.value.toString(),
-          );
+            // Ensure *this* device exists in the local DB.
+            await db.upsertDevice(
+              deviceId: currentDeviceId,
+              networkId: networkId,
+              name: p2pService.currentUser!.name,
+              status: p2pService.currentUser!.status,
+              isHost: p2pService.isHost ? 1 : 0,
+              avatar: p2pService.currentUser!.avatarLetter,
+              color: p2pService.currentUser!.avatarColor.value.toString(),
+            );
+          }
         } catch (e) {
           // Log but continue — failure to persist shouldn't break the UI
           debugPrint('Failed to persist created network (local mirror): $e');
@@ -299,22 +301,18 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   // Broadcast a message to all members in the network
   Future<void> broadcastMessage(String message) async {
     try {
-      // Persist broadcast message if we have a local network record
+      // Persist broadcast message
       try {
-        final db = DatabaseHelper.instance;
-        if (state is NetworkDashboardLoaded) {
-          final s = state as NetworkDashboardLoaded;
-          if (s.networkId != null) {
-            final sender = p2pService.currentUser?.deviceId;
-            await db.insertMessage(
-              networkId: s.networkId!,
-              senderDeviceId: sender,
-              receiverDeviceId: null,
-              messageContent: message,
-              isMine: true,
-              isDelivered: true,
-            );
-          }
+        final senderUserId = p2pService.currentUser?.userId;
+        if (senderUserId != null) {
+          final db = DatabaseHelper.instance;
+          await db.insertMessage(
+            senderUserId: senderUserId,
+            receiverUserId: null, // Broadcast has no specific receiver
+            messageContent: message,
+            isMine: true,
+            isDelivered: true,
+          );
         }
       } catch (_) {}
 
@@ -326,28 +324,28 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   }
 
   // Send a private message to a specific device
-  Future<void> sendPrivateMessage(String deviceId, String message) async {
+  Future<void> sendPrivateMessage(
+    String deviceId,
+    String message, {
+    String? receiverUserId,
+  }) async {
     try {
-      // Persist message if we have a local network record
+      // Persist private message
       try {
-        if (state is NetworkDashboardLoaded) {
-          final s = state as NetworkDashboardLoaded;
-          if (s.networkId != null) {
-            final sender = p2pService.currentUser?.deviceId;
-            final db = DatabaseHelper.instance;
-            await db.insertMessage(
-              networkId: s.networkId!,
-              senderDeviceId: sender,
-              receiverDeviceId: deviceId,
-              messageContent: message,
-              isMine: true,
-              isDelivered: true, // Delivered immediately in P2P
-            );
-          }
+        final senderUserId = p2pService.currentUser?.userId;
+        if (senderUserId != null) {
+          final db = DatabaseHelper.instance;
+          await db.insertMessage(
+            senderUserId: senderUserId,
+            receiverUserId: receiverUserId,
+            messageContent: message,
+            isMine: true,
+            isDelivered: true, // Delivered immediately in P2P
+          );
         }
       } catch (_) {}
 
-      p2pService.sendPrivate(deviceId, message);
+      p2pService.sendPrivate(deviceId, message, receiverUserId: receiverUserId);
     } catch (e) {
       emit(NetworkDashboardError('Failed to send message: $e'));
     }
@@ -370,15 +368,15 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       stopListening();
 
-      // Get current device ID for database cleanup
-      final deviceId = await DeviceIdService.getDeviceId();
       final db = DatabaseHelper.instance;
+
+      // Disconnect user - set device_id to null (preserves user data and messages)
+      if (p2pService.currentUser != null) {
+        await db.disconnectUser(p2pService.currentUser!.userId);
+      }
 
       // Leave the P2P network
       await p2pService.leaveNetwork();
-
-      // Clean up database - delete device (this will cascade if it's a host)
-      await db.deleteDevice(deviceId);
 
       emit(NetworkDashboardDisconnected(isServer: false));
     } catch (e) {
@@ -405,11 +403,12 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       // If we were host, delete the network from local DB to clean up
       if (current.isServer &&
           current.networkId != null &&
-          p2pService.currentUser != null) {
+          p2pService.currentUser != null &&
+          p2pService.currentUser!.deviceId != null) {
         try {
           await DatabaseHelper.instance.deleteNetwork(
             networkId: current.networkId!,
-            requesterDeviceId: p2pService.currentUser!.deviceId,
+            requesterDeviceId: p2pService.currentUser!.deviceId!,
           );
         } catch (_) {}
       }

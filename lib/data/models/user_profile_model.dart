@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UserProfile {
+  final String userId; // Permanent unique identifier for the user
   final String name;
   final String avatarLetter;
   final Color avatarColor;
@@ -9,10 +10,11 @@ class UserProfile {
   final String phone;
   final String address;
   final String bloodType;
-  final String deviceId; // Unique identifier  -> for P2P and Database
+  final String? deviceId; // Temporary P2P session ID (null when disconnected)
   final String emergencyContact;
 
   UserProfile({
+    required this.userId,
     required this.name,
     required this.avatarLetter,
     required this.avatarColor,
@@ -21,7 +23,7 @@ class UserProfile {
     required this.phone,
     required this.address,
     required this.bloodType,
-    required this.deviceId,
+    this.deviceId, // Optional - null when user is disconnected
     required this.emergencyContact,
   });
 
@@ -49,20 +51,25 @@ class UserProfile {
   }
 
   factory UserProfile.fromMap(Map<String, dynamic> m) {
-    final name = m['username']?.toString() ?? m['name']?.toString() ?? 'Unknown';
-    final avatarLetter = m['avatar']?.toString() ?? 
-                        (name.isNotEmpty ? name[0].toUpperCase() : '?');
+    final userId = m['user_id']?.toString() ?? m['userId']?.toString() ?? '';
+    final name =
+        m['username']?.toString() ?? m['name']?.toString() ?? 'Unknown';
+    final avatarLetter =
+        m['avatar']?.toString() ??
+        (name.isNotEmpty ? name[0].toUpperCase() : '?');
     final avatarColor = _parseColor(m['color']);
     final status = m['status']?.toString() ?? 'Idle';
     final email = m['email']?.toString() ?? '';
     final phone = m['phone']?.toString() ?? '';
     final address = m['address']?.toString() ?? '';
-    final bloodType = m['blood_type']?.toString() ?? m['bloodType']?.toString() ?? 'N/A';
-    final deviceId = m['device_id']?.toString() ?? '';
+    final bloodType =
+        m['blood_type']?.toString() ?? m['bloodType']?.toString() ?? 'N/A';
+    final deviceId = m['device_id']
+        ?.toString(); // Can be null when user is disconnected
     final emergencyContact = m['emergency_contact']?.toString() ?? '';
-    
 
     return UserProfile(
+      userId: userId,
       name: name,
       avatarLetter: avatarLetter,
       avatarColor: avatarColor,
@@ -73,12 +80,12 @@ class UserProfile {
       bloodType: bloodType,
       deviceId: deviceId,
       emergencyContact: emergencyContact,
-
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
+      'user_id': userId,
       'username': name,
       'email': email,
       'phone': phone,
@@ -94,6 +101,7 @@ class UserProfile {
   // Returns only the fields needed for the Users table (excludes color and avatar which belong to Devices table)
   Map<String, dynamic> toUserMap() {
     return {
+      'user_id': userId,
       'username': name,
       'email': email,
       'phone': phone,
@@ -112,8 +120,10 @@ class UserProfile {
     String? bloodType,
     Color? avatarColor,
     String? emergencyContact,
+    String? deviceId,
   }) {
     return UserProfile(
+      userId: userId, // userId is permanent and never changes
       name: name ?? this.name,
       avatarLetter: name != null ? name[0].toUpperCase() : avatarLetter,
       avatarColor: avatarColor ?? this.avatarColor,
@@ -122,7 +132,7 @@ class UserProfile {
       phone: phone ?? this.phone,
       address: address ?? this.address,
       bloodType: bloodType ?? this.bloodType,
-      deviceId: deviceId,
+      deviceId: deviceId ?? this.deviceId,
       emergencyContact: emergencyContact ?? this.emergencyContact,
     );
   }

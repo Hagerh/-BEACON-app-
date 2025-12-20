@@ -20,6 +20,7 @@ void main() {
 
   // Sample User Data
   final testUser = UserProfile(
+    userId: 'test-user-123',
     name: 'John Doe',
     avatarLetter: 'J',
     avatarColor: Colors.blue,
@@ -98,12 +99,11 @@ void main() {
       await pumpProfileScreen(tester);
 
       // Assert
-     
+
       expect(find.text('John Doe'), findsAtLeastNWidgets(1));
 
       expect(find.text('john@example.com'), findsOneWidget);
       expect(find.text('1234567890'), findsOneWidget);
-      
     });
 
     testWidgets('Shows Save Button when profile is Editable', (tester) async {
@@ -115,7 +115,7 @@ void main() {
       // Act
       await pumpProfileScreen(tester);
 
-     // Assert 
+      // Assert
       expect(find.text('Save Changes'), findsOneWidget);
     });
 

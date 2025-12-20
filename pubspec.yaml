@@ -39,8 +39,10 @@ dependencies:
   google_fonts: ^6.3.2
 
   path: ^1.8.4
+  shared_preferences: ^2.2.2
   speech_to_text: ^7.3.0
   sqflite_sqlcipher: ^3.4.0
+  uuid: ^4.3.3
 
 dev_dependencies:
   flutter_lints: ^5.0.0

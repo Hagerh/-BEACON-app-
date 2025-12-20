@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/core/services/device_id_service.dart';
+import 'package:projectdemo/core/services/user_id_service.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
@@ -15,18 +15,20 @@ class NetworkLoaderScreen extends StatelessWidget {
   const NetworkLoaderScreen({super.key, required this.p2pService});
 
   Future<UserProfile> _loadUserProfile() async {
-    final deviceId = await DeviceIdService.getDeviceId();
+    final userId =
+        await UserIdService.getUserId(); // Get or generate permanent user ID
     final db = DatabaseHelper.instance;
 
-    // Try to load existing profile
-    UserProfile? user = await db.getUserProfile(deviceId);
+    // Try to load existing profile by user_id (supports reconnection)
+    UserProfile? user = await db.getUserProfileByUserId(userId);
 
     // If not found, create default profile
     if (user == null) {
       user = UserProfile(
+        userId: userId, // Permanent user ID
         emergencyContact: '',
         name: 'My Device',
-        deviceId: deviceId,
+        deviceId: null, // Will be set when joining P2P network
         avatarLetter: 'M',
         avatarColor: Colors.blue,
         status: 'Active',

@@ -4,6 +4,7 @@ import 'package:projectdemo/business/cubit/profile/user_profile_state.dart';
 
 import 'package:projectdemo/core/constants/colors.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
+import 'package:projectdemo/core/services/user_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 
@@ -22,16 +23,17 @@ class ProfileCubit extends Cubit<ProfileState> {
       UserProfile? user;
 
       if (isViewingSelf) {
-        final deviceId =
-            args?['deviceId'] ??
-            args?['currentDeviceId'] ??
-            'DEVICE-OWNER-ID'; // Fallback to default owner ID
+        final userId = await UserIdService.getUserId(); // Get permanent user ID
 
-        user = await db.getUserProfile(deviceId.toString());
+        // Try to load by user_id first (preferred)
+        user = await db.getUserProfileByUserId(userId);
 
         if (user == null) {
-          final defaultDeviceId = deviceId?.toString() ?? 'DEVICE-OWNER-ID';
+          final defaultDeviceId =
+              args?['deviceId']?.toString() ??
+              args?['currentDeviceId']?.toString();
           user = UserProfile(
+            userId: userId,
             emergencyContact: '',
             name: 'Current User',
             avatarLetter: 'C',
@@ -46,15 +48,27 @@ class ProfileCubit extends Cubit<ProfileState> {
         }
       } else {
         final deviceId = args?['deviceId'];
+        final userId = args?['userId']
+            ?.toString(); // Try to get user_id from args
 
-        if (deviceId != null) {
+        // Try by user_id first if available
+        if (userId != null) {
+          user = await db.getUserProfileByUserId(userId);
+        }
+
+        // Fallback to device_id
+        if (user == null && deviceId != null) {
           user = await db.getUserProfile(deviceId.toString());
         }
 
         if (user == null) {
-          final peerDeviceId = deviceId?.toString() ?? 'DEVICE-PEER-ID';
+          // Create temporary profile (this is a peer without saved data)
+          final peerUserId =
+              userId ?? 'temp-${DateTime.now().millisecondsSinceEpoch}';
+          final peerDeviceId = deviceId?.toString();
           final name = args?['name']?.toString() ?? 'Peer User';
           user = UserProfile(
+            userId: peerUserId,
             emergencyContact: '',
             name: name,
             avatarLetter:

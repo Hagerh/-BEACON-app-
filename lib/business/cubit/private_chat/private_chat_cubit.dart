@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/message_model.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
-import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/business/cubit/private_chat/private_chat_state.dart';
 
 class PrivateChatCubit extends Cubit<PrivateChatState> {
@@ -38,9 +37,21 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       (message) async {
         // Only handle messages FROM the current chat peer
         // (not TO them - those are our outgoing messages)
-        debugPrint("🥰Received message in PrivateChatCubit: ${message.text} from ${message.senderDeviceId} and!! ${state.recipientDeviceId}");
-        if (message.senderDeviceId != state.recipientDeviceId) {
-          return; // Ignore messages from other peers
+        debugPrint(
+          "🥰Received message in PrivateChatCubit: ${message.text} from ${message.senderUserId}",
+        );
+
+        // Check if message is from the current peer (by user_id)
+        // We need to look up the peer's user_id
+        try {
+          final db = DatabaseHelper.instance;
+          final peerProfile = await db.getUserProfile(state.recipientDeviceId);
+          if (peerProfile != null &&
+              message.senderUserId != peerProfile.userId) {
+            return; // Ignore messages from other peers
+          }
+        } catch (_) {
+          // If lookup fails, skip filtering
         }
 
         try {
@@ -102,26 +113,28 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   }
 
   Future<void> _loadHistory() async {
-    // Load recent messages for this chat from DB if network id is known
+    // Load recent messages for this chat from DB
     try {
       final db = DatabaseHelper.instance;
 
-      // Ensure we have a local currentDeviceId for proper persistence
-      String? currentId = state.currentDeviceId;
-      if (currentId == null) {
-        currentId = await DeviceIdService.getDeviceId();
-        emit(state.copyWith(currentDeviceId: currentId));
-      }
+      // Get current user's userId
+      String? currentUserId = p2pService.currentUser?.userId;
 
-      final msgs = await db.fetchRecentMessages(
-        networkId: state.networkId,
-        peerDeviceId: state.recipientDeviceId,
-        currentDeviceId: currentId,
-        limit: 100,
-      );
+      // Get peer's userId from their device_id
+      String? peerUserId;
+      final peerProfile = await db.getUserProfile(state.recipientDeviceId);
+      peerUserId = peerProfile?.userId;
 
-      if (msgs.isNotEmpty) {
-        emit(state.copyWith(messages: List.from(msgs)));
+      if (currentUserId != null && peerUserId != null) {
+        final msgs = await db.fetchRecentMessages(
+          currentUserId: currentUserId,
+          peerUserId: peerUserId,
+          limit: 100,
+        );
+
+        if (msgs.isNotEmpty) {
+          emit(state.copyWith(messages: List.from(msgs)));
+        }
       }
 
       // Reset unread count for this peer when opening chat
@@ -138,53 +151,26 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
     try {
       final db = DatabaseHelper.instance;
 
-      // Determine networkId: prefer state, otherwise try to resolve from sender
-      int? networkId = state.networkId;
+      // Get user IDs
+      String? senderUserId = message.senderUserId;
+      String? receiverUserId = message.receiverUserId;
 
-      // Ensure we have a local currentDeviceId for proper persistence
-      String? currentId = state.currentDeviceId;
-      if (currentId == null) {
-        currentId = await DeviceIdService.getDeviceId();
-        emit(state.copyWith(currentDeviceId: currentId));
+      // If not in message, try to look up from database using device IDs
+      if (senderUserId == null) {
+        final senderProfile = await db.getUserProfile(state.recipientDeviceId);
+        senderUserId = senderProfile?.userId;
+      }
+      if (receiverUserId == null) {
+        // Get current user's userId from P2P service
+        receiverUserId = p2pService.currentUser?.userId;
       }
 
-      // Peer id should come from the message sender if available
-      final peerId = message.senderDeviceId ?? state.recipientDeviceId;
-
-      // Try to resolve network id if we don't have one yet
-      if (networkId == null && peerId != null) {
-        networkId = await db.getNetworkIdByDeviceId(peerId);
-      }
-
-      // If we still don't know the network, we cannot persist safely
-      if (networkId == null) return message;
-
-      // Ensure the sender (peer) exists in Devices table so FK constraint won't fail
-      try {
-        await db.upsertDevice(
-          deviceId: peerId!,
-          networkId: networkId,
-          name: peerId,
-          status: 'Active',
-        );
-      } catch (_) {}
-
-      // Ensure local device exists in Devices table too
-      try {
-        final localUser = await db.getUserProfile(currentId!);
-        final localName = localUser?.name ?? 'Local Device';
-        await db.upsertDevice(
-          deviceId: currentId,
-          networkId: networkId,
-          name: localName,
-          status: 'Active',
-        );
-      } catch (_) {}
+      // Can't persist without sender
+      if (senderUserId == null) return message;
 
       final id = await db.insertMessage(
-        networkId: networkId,
-        senderDeviceId: peerId,
-        receiverDeviceId: currentId,
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
         messageContent: message.text,
         isMine: false,
         isDelivered: message.isDelivered,
@@ -192,8 +178,8 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
 
       return message.copyWith(
         messageId: id,
-        senderDeviceId: peerId,
-        receiverDeviceId: currentId,
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
       );
     } catch (e) {
       print('Failed to persist incoming message: $e');
@@ -204,12 +190,28 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   Future<int> _persistOutgoingMessage(Message message) async {
     try {
       final db = DatabaseHelper.instance;
-      if (state.networkId == null) return -1;
+
+      // Get current user's userId
+      String? senderUserId = p2pService.currentUser?.userId;
+      if (senderUserId == null && state.currentDeviceId != null) {
+        final senderProfile = await db.getUserProfile(state.currentDeviceId!);
+        senderUserId = senderProfile?.userId;
+      }
+
+      // Get recipient's userId
+      String? receiverUserId = message.receiverUserId;
+      if (receiverUserId == null) {
+        final recipientProfile = await db.getUserProfile(
+          state.recipientDeviceId,
+        );
+        receiverUserId = recipientProfile?.userId;
+      }
+
+      if (senderUserId == null) return -1; // Can't persist without sender
 
       final id = await db.insertMessage(
-        networkId: state.networkId!,
-        senderDeviceId: state.currentDeviceId,
-        receiverDeviceId: state.recipientDeviceId,
+        senderUserId: senderUserId,
+        receiverUserId: receiverUserId,
         messageContent: message.text,
         isMine: true,
         isDelivered: false,

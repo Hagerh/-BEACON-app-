@@ -38,7 +38,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 2,
+      version: 4, // Updated to remove network_id from Messages
       password: encryptionKey, // SQLCipher encryption key
       onConfigure: (db) async {
         // Enable foreign keys
@@ -97,18 +97,20 @@ class DatabaseHelper {
     // so we'll handle referential integrity in application logic
     // The host_device_id will be validated when devices are inserted/updated
 
-    // Users
+    // Users - stores permanent user identity
     await db.execute('''
       CREATE TABLE Users (
-        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
+        user_id TEXT PRIMARY KEY,
+        username TEXT NOT NULL,
         email TEXT,
         phone TEXT,
         address TEXT,
         blood_type TEXT,
         emergency_contact TEXT,
         device_id TEXT,
-        FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE CASCADE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
       )
     ''');
 
@@ -116,17 +118,14 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE Messages (
         message_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        network_id INTEGER NOT NULL,
-        sender_device_id TEXT,
-        receiver_device_id TEXT,
+        sender_user_id TEXT NOT NULL,
+        receiver_user_id TEXT,
         message_content TEXT NOT NULL,
         is_mine INTEGER NOT NULL DEFAULT 0,
         is_delivered INTEGER NOT NULL DEFAULT 0,
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE,
-        FOREIGN KEY(sender_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL,
-        FOREIGN KEY(receiver_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
-        
+        FOREIGN KEY(sender_user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+        FOREIGN KEY(receiver_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
       )
     ''');
 
@@ -247,68 +246,94 @@ class DatabaseHelper {
         .toList();
   }
 
+  // Fetch messages between two users (simplified - no network filtering)
   Future<List<Message>> fetchRecentMessages({
-    int? networkId,
-    String? peerDeviceId,
-    String? currentDeviceId,
+    String? peerUserId, // Get messages with this user
+    String? currentUserId, // Current user's ID
     int limit = 50,
   }) async {
     final db = await instance.database;
 
     List<Map<String, Object?>> rows;
 
-    if (networkId != null && peerDeviceId != null && currentDeviceId != null) {
-      // Strict 1-to-1 history between currentDeviceId and peerDeviceId inside a network
+    if (peerUserId != null && currentUserId != null) {
+      // Get all messages between current user and peer (across all sessions)
       rows = await db.query(
         'Messages',
         where: '''
-          network_id = ? AND (
-            (sender_device_id = ? AND receiver_device_id = ?)
-            OR
-            (sender_device_id = ? AND receiver_device_id = ?)
-          )
+          (sender_user_id = ? AND receiver_user_id = ?)
+          OR
+          (sender_user_id = ? AND receiver_user_id = ?)
+          OR
+          (sender_user_id = ? AND receiver_user_id IS NULL)
+          OR
+          (sender_user_id = ? AND receiver_user_id IS NULL)
         ''',
         whereArgs: [
-          networkId,
-          peerDeviceId,
-          currentDeviceId,
-          currentDeviceId,
-          peerDeviceId,
+          currentUserId, peerUserId, // I sent to them
+          peerUserId, currentUserId, // They sent to me
+          currentUserId, // I broadcast
+          peerUserId, // They broadcast
         ],
         orderBy: 'sent_at ASC',
         limit: limit,
       );
-    } else if (peerDeviceId != null) {
-      // All messages involving peer across networks (fallback)
+    } else if (currentUserId != null) {
+      // Get all messages involving current user
       rows = await db.query(
         'Messages',
-        where: 'sender_device_id = ? OR receiver_device_id = ?',
-        whereArgs: [peerDeviceId, peerDeviceId],
-        orderBy: 'sent_at ASC',
-        limit: limit,
-      );
-    } else if (networkId != null) {
-      rows = await db.query(
-        'Messages',
-        where: 'network_id = ?',
-        whereArgs: [networkId],
+        where:
+            'sender_user_id = ? OR receiver_user_id = ? OR receiver_user_id IS NULL',
+        whereArgs: [currentUserId, currentUserId],
         orderBy: 'sent_at ASC',
         limit: limit,
       );
     } else {
+      // Get all messages
       rows = await db.query('Messages', orderBy: 'sent_at ASC', limit: limit);
     }
 
     return rows.map((r) => Message.fromMap(r as Map<String, dynamic>)).toList();
   }
 
-  // Get user profile by device_id (joins Users and Devices tables)
+  // Get user profile by user_id (permanent ID) - for reconnection logic
+  Future<UserProfile?> getUserProfileByUserId(String userId) async {
+    final db = await instance.database;
+
+    final rows = await db.rawQuery(
+      '''
+      SELECT 
+        u.user_id,
+        u.username,
+        u.email,
+        u.phone,
+        u.address,
+        u.blood_type,
+        u.device_id,
+        u.emergency_contact,
+        d.status,
+        d.avatar,
+        d.color
+      FROM Users u
+      LEFT JOIN Devices d ON u.device_id = d.device_id
+      WHERE u.user_id = ?
+      LIMIT 1
+    ''',
+      [userId],
+    );
+
+    if (rows.isEmpty) return null;
+    return UserProfile.fromMap(rows.first as Map<String, dynamic>);
+  }
+
+  // Get user profile by device_id (joins Users and Devices tables) - LEGACY
   Future<UserProfile?> getUserProfile(String deviceId) async {
     final db = await instance.database;
 
     final rows = await db.rawQuery(
       '''
       SELECT 
+        u.user_id,
         u.username,
         u.email,
         u.phone,
@@ -331,129 +356,102 @@ class DatabaseHelper {
     return UserProfile.fromMap(rows.first as Map<String, dynamic>);
   }
 
-  // Save or update user profile
+  // Save or update user profile with reconnection logic
+  // If user_id exists, updates device_id (reconnection scenario)
+  // If user_id is new, creates new user record
   Future<void> saveUserProfile(UserProfile profile) async {
     final db = await instance.database;
 
-    // IMPORTANT: Handle Devices FIRST before Users to satisfy foreign key constraint
-    // The Users table has a foreign key on device_id that references Devices(device_id)
-    /*
-    final existingUsers = await db.query(
+    // Step 1: Check if user exists by user_id (reconnection logic)
+    final existingUsersByUserId = await db.query(
       'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
-    final userData = profile.toUserMap();
-
-    if (existingUsers.isEmpty) {
-      // Insert new user
-      // Username is UNIQUE; if this device was re-provisioned (new device_id) but kept the
-      // same default username (e.g. "My Device"), a plain insert will throw.
-      // REPLACE resolves the conflict by overwriting the existing row with the same username.
-      await db.insert(
-        'Users',
-        userData,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    } else {
-      // Update existing user
-      await db.update(
-        'Users',
-        userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
-      );
-    }
-*/
-    // Update or insert device info (avatar and color)
-    // Check if device exists
-    final existingDevices = await db.query(
-      'Devices',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
+      where: 'user_id = ?',
+      whereArgs: [profile.userId],
       limit: 1,
     );
 
     final profileMap = profile.toMap();
 
-    // Prepare device data
-    final deviceData = <String, dynamic>{
-      'device_id': profile.deviceId,
-      'name': profile.name,
-      'status': profile.status,
-      'avatar': profile.avatarLetter,
-      'color': profileMap['color'],
-      'ip_address': null, // Can be set later when P2P connection is established
-    };
-
-    if (existingDevices.isEmpty) {
-      // Try to find an existing network to attach to, or use a default
-      final networks = await db.query('Networks', limit: 1);
-
-      if (networks.isNotEmpty) {
-        deviceData['network_id'] = networks.first['network_id'];
-        deviceData['is_host'] = 0;
-        await db.insert('Devices', deviceData);
-      } else {
-        // Create a default network for the user
-        final newNetworkId = await db.insert('Networks', {
-          'network_name': 'Local Self',
-          'status': 'Offline',
-        });
-        deviceData['network_id'] = newNetworkId;
-        deviceData['is_host'] = 1; // User is host of their own network
-        await db.insert('Devices', deviceData);
-
-        // Update network to reference this device as host
-        await db.update(
-          'Networks',
-          {'host_device_id': profile.deviceId},
-          where: 'network_id = ?',
-          whereArgs: [newNetworkId],
-        );
-      }
-    } else {
-      // Update existing device
-      await db.update(
+    // Step 2: Handle device if device_id is provided
+    if (profile.deviceId != null) {
+      // Check if device exists
+      final existingDevices = await db.query(
         'Devices',
-        {
-          'name': profile.name,
-          'status': profile.status,
-          'avatar': profile.avatarLetter,
-          'color': profileMap['color'],
-        },
         where: 'device_id = ?',
         whereArgs: [profile.deviceId],
+        limit: 1,
       );
+
+      // Prepare device data
+      final deviceData = <String, dynamic>{
+        'device_id': profile.deviceId,
+        'name': profile.name,
+        'status': profile.status,
+        'avatar': profile.avatarLetter,
+        'color': profileMap['color'],
+        'ip_address':
+            null, // Can be set later when P2P connection is established
+      };
+
+      if (existingDevices.isEmpty) {
+        // Try to find an existing network to attach to, or use a default
+        final networks = await db.query('Networks', limit: 1);
+
+        if (networks.isNotEmpty) {
+          deviceData['network_id'] = networks.first['network_id'];
+          deviceData['is_host'] = 0;
+          await db.insert('Devices', deviceData);
+        } else {
+          // Create a default network for the user
+          final newNetworkId = await db.insert('Networks', {
+            'network_name': 'Local Self',
+            'status': 'Offline',
+          });
+          deviceData['network_id'] = newNetworkId;
+          deviceData['is_host'] = 1; // User is host of their own network
+          await db.insert('Devices', deviceData);
+
+          // Update network to reference this device as host
+          await db.update(
+            'Networks',
+            {'host_device_id': profile.deviceId},
+            where: 'network_id = ?',
+            whereArgs: [newNetworkId],
+          );
+        }
+      } else {
+        // Update existing device
+        await db.update(
+          'Devices',
+          {
+            'name': profile.name,
+            'status': profile.status,
+            'avatar': profile.avatarLetter,
+            'color': profileMap['color'],
+          },
+          where: 'device_id = ?',
+          whereArgs: [profile.deviceId],
+        );
+      }
     }
 
-    // NOW insert/update the user (after device exists)
-    final existingUsers = await db.query(
-      'Users',
-      where: 'device_id = ?',
-      whereArgs: [profile.deviceId],
-      limit: 1,
-    );
-
+    // Step 3: Insert or update user by user_id (reconnection aware)
     final userData = profile.toUserMap();
 
-    if (existingUsers.isEmpty) {
-      // Insert new user
-      // username is UNIQUE in this schema; avoid crashing when default usernames repeat.
+    if (existingUsersByUserId.isEmpty) {
+      // New user - insert
       await db.insert(
         'Users',
         userData,
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } else {
-      // Update existing user
+      // Existing user - update (including new device_id for reconnection)
       await db.update(
         'Users',
         userData,
-        where: 'device_id = ?',
-        whereArgs: [profile.deviceId],
+        where: 'user_id = ?',
+        whereArgs: [profile.userId],
       );
     }
   }
@@ -573,11 +571,10 @@ class DatabaseHelper {
     );
   }
 
-  // Insert a new message
+  // Insert a new message (simplified - no network_id, messages persist across sessions)
   Future<int> insertMessage({
-    required int networkId,
-    String? senderDeviceId,
-    String? receiverDeviceId,
+    required String senderUserId, // Permanent user ID
+    String? receiverUserId, // Permanent user ID (null for broadcast)
     required String messageContent,
     bool isMine = false,
     bool isDelivered = false,
@@ -585,9 +582,8 @@ class DatabaseHelper {
     final db = await instance.database;
 
     return await db.insert('Messages', {
-      'network_id': networkId,
-      'sender_device_id': senderDeviceId,
-      'receiver_device_id': receiverDeviceId,
+      'sender_user_id': senderUserId,
+      'receiver_user_id': receiverUserId,
       'message_content': messageContent,
       'is_mine': isMine ? 1 : 0,
       'is_delivered': isDelivered ? 1 : 0,
@@ -648,6 +644,29 @@ class DatabaseHelper {
       where:
           'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
       whereArgs: [networkId, deviceId, deviceId],
+    );
+  }
+
+  /// Disconnect user by setting device_id to null (user remains in database)
+  /// This allows reconnection logic to find the user and restore their message history
+  Future<void> disconnectUser(String userId) async {
+    final db = await instance.database;
+    await db.update(
+      'Users',
+      {'device_id': null, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  /// Disconnect user by device_id (finds user by device_id and sets it to null)
+  Future<void> disconnectUserByDeviceId(String deviceId) async {
+    final db = await instance.database;
+    await db.update(
+      'Users',
+      {'device_id': null, 'updated_at': DateTime.now().toIso8601String()},
+      where: 'device_id = ?',
+      whereArgs: [deviceId],
     );
   }
 

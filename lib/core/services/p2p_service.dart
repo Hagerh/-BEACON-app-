@@ -88,6 +88,14 @@ class P2PService {
       // Create P2P group
       await _host!.createGroup(advertise: true);
       _myP2pId = "HOST";
+
+      // Update currentUser's deviceId with P2P session ID
+      if (currentUser != null) {
+        currentUser = currentUser!.copyWith(deviceId: _myP2pId);
+        // Save to database
+        await DatabaseHelper.instance.saveUserProfile(currentUser!);
+      }
+
       _registerHostAsMember();
     } catch (e) {
       debugPrint("Failed to create network: $e");
@@ -259,6 +267,7 @@ class P2PService {
     final Map<String, dynamic> pkt = {
       "type": "broadcast",
       "from": _myP2pId,
+      "fromUserId": currentUser?.userId, // Include permanent user ID
       "to": "ALL",
       "message": text,
       "senderName": currentUser!.name,
@@ -266,7 +275,7 @@ class P2PService {
     _sendToAll(pkt);
   }
 
-  void sendPrivate(String receiverId, String text) {
+  void sendPrivate(String receiverId, String text, {String? receiverUserId}) {
     debugPrint("🥸 Sending private message to $receiverId: $text");
     debugPrint("My P2P ID: $_myP2pId");
     debugPrint("Text: $text");
@@ -274,7 +283,9 @@ class P2PService {
     final Map<String, dynamic> pkt = {
       "type": "private",
       "from": _myP2pId,
+      "fromUserId": currentUser?.userId, // Include permanent user ID
       "to": receiverId,
+      "toUserId": receiverUserId, // Include receiver's permanent user ID
       "message": text,
       "senderName": currentUser!.name,
     };
@@ -316,11 +327,12 @@ class P2PService {
   void broadcastProfile() {
     if (currentUser == null) return;
 
-    final String fromId = _myP2pId ?? currentUser!.deviceId;
+    final String fromId = _myP2pId ?? currentUser!.deviceId ?? 'UNKNOWN';
     final Map<String, dynamic> pkt = {
       "type": "profile",
       "from": fromId,
-      "fromAppId": currentUser!.deviceId,
+      "fromUserId": currentUser!.userId, // Permanent user ID
+      "fromAppId": currentUser!.deviceId, // Temporary device ID (can be null)
       "name": currentUser!.name,
       "email": currentUser!.email,
       "phone": currentUser!.phone,
@@ -361,8 +373,6 @@ class P2PService {
   Future<void> _handleIncomingPacket(String raw) async {
     try {
       Map<String, dynamic> data = jsonDecode(raw);
-      final String? senderP2pId = data["from"]?.toString();
-      final String? receiverP2pId = data["to"]?.toString();
 
       switch (data["type"]) {
         case "broadcast":
@@ -372,8 +382,8 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: senderP2pId,
-              receiverDeviceId: 'ALL',
+              senderUserId: data["fromUserId"]?.toString(),
+              receiverUserId: null, // Broadcast has no specific receiver
             ),
           );
           break;
@@ -385,8 +395,8 @@ class P2PService {
               isMine: false,
               time: TimeOfDay.now(),
               isDelivered: true,
-              senderDeviceId: senderP2pId,
-              receiverDeviceId: receiverP2pId,
+              senderUserId: data["fromUserId"]?.toString(),
+              receiverUserId: data["toUserId"]?.toString(),
             ),
           );
           break;
@@ -406,6 +416,17 @@ class P2PService {
         case "p2p_id_assign":
           final String? assignedId = data["message"]?.toString();
           _myP2pId = assignedId;
+
+          // Update currentUser's deviceId with assigned P2P session ID
+          if (currentUser != null && assignedId != null) {
+            currentUser = currentUser!.copyWith(deviceId: assignedId);
+            // Save to database
+            try {
+              await DatabaseHelper.instance.saveUserProfile(currentUser!);
+            } catch (e) {
+              debugPrint("Failed to save user profile with P2P ID: $e");
+            }
+          }
           break;
 
         case "profile":
@@ -421,14 +442,15 @@ class P2PService {
   // Handle incoming profile data from peers
   Future<void> _handleProfileUpdate(Map<String, dynamic> data) async {
     try {
-      final deviceId = data["fromAppId"]?.toString();
-      if (deviceId == null) return;
+      final userId = data["fromUserId"]?.toString();
+      if (userId == null) return;
 
       // Don't save our own profile
-      if (deviceId == currentUser?.deviceId) return;
+      if (userId == currentUser?.userId) return;
 
       // Create UserProfile from received data
       final profile = UserProfile(
+        userId: userId, // Permanent user ID
         name: data["name"]?.toString() ?? "Unknown",
         email: data["email"]?.toString() ?? "",
         phone: data["phone"]?.toString() ?? "",
@@ -438,7 +460,6 @@ class P2PService {
         avatarLetter: data["avatar"]?.toString() ?? "?",
         avatarColor: Color(int.parse(data["color"]?.toString() ?? "0")),
         status: data["status"]?.toString() ?? "Idle",
-        deviceId: deviceId,
       );
 
       // Save to database
@@ -467,7 +488,9 @@ class P2PService {
     // _membersController.add(List.unmodifiable(_members));
 
     for (var client in clients) {
-      debugPrint("🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})");
+      debugPrint(
+        "🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})",
+      );
       if (_members.any((m) => m.deviceId == client.id)) continue;
 
       _members.add(
@@ -508,6 +531,12 @@ class P2PService {
   // ---------------- DISCONNECT ------------------
 
   void disconnect() {
+    // Clear P2P session ID from currentUser before disconnecting
+    if (currentUser != null) {
+      currentUser = currentUser!.copyWith(deviceId: null);
+      // Note: Database update happens in cubit's leaveNetwork/stopNetwork
+    }
+
     isHost = false;
     currentUser = null;
     _maxMembers = null;
