@@ -182,7 +182,7 @@ class P2PService {
         //distance: current.distance,
         avatar: current.avatar,
         color: current.color,
-        last_seen_at: current.last_seen_at,\
+        last_seen_at: current.last_seen_at,
       );
 
       _membersController.add(List.unmodifiable(_members));
