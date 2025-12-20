@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/core/services/notfication_service.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/business/cubit/private_chat/private_chat_cubit.dart';
 import 'package:projectdemo/business/cubit/profile/user_profile_cubit.dart';
@@ -18,7 +19,9 @@ import 'package:projectdemo/presentation/screens/resource_sharing_screen.dart';
 import 'package:projectdemo/presentation/screens/splash_screen.dart';
 import 'package:projectdemo/presentation/screens/network_loader_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService().initialize();
   runApp(MyApp());
 }
 

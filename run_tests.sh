@@ -61,7 +61,7 @@ else
     
     echo "      Tests Finished. Stopping Recording..." | tee -a $LOG_FILE
     
-    # CRITICAL: Send SIGINT to screenrecord process on the device
+    # Send signal to screenrecord process on the device
     # This allows it to finalize the MP4 file properly
     adb shell "pkill -SIGINT screenrecord" 2>/dev/null
     
