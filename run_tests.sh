@@ -6,6 +6,7 @@ LOG_FILE="test_execution_log.txt"
 VIDEO_FILE="test_video.mp4"
 DEVICE_PATH="/sdcard/$VIDEO_FILE"
 DATE=$(date '+%Y-%m-%d %H:%M:%S')
+TIME_LIMIT=60  # Max duration in seconds (Android limit is usually 180s/3min)
 
 # --- Start Logging ---
 echo "==========================================" | tee $LOG_FILE
@@ -14,7 +15,7 @@ echo "   Date: $DATE" | tee -a $LOG_FILE
 echo "==========================================" | tee -a $LOG_FILE
 echo "" | tee -a $LOG_FILE
 
-# ---  Clean Project ---
+# --- Clean Project ---
 echo "[1/5] Cleaning project..." | tee -a $LOG_FILE
 flutter clean >> $LOG_FILE 2>&1
 flutter pub get >> $LOG_FILE 2>&1
@@ -29,7 +30,7 @@ else
     echo "      Analysis Failed. Check log for details." | tee -a $LOG_FILE
 fi
 
-# ---  Run Unit & Widget Tests ---
+# --- Run Unit & Widget Tests ---
 echo "[3/5] Running Unit & Widget Tests..." | tee -a $LOG_FILE
 flutter test >> $LOG_FILE 2>&1
 
@@ -48,24 +49,24 @@ if [ -z "$DEVICES" ]; then
 else
     echo "      Device found. Starting Video Recording..." | tee -a $LOG_FILE
     
-    # --- start recording (Background Process) ---
-
-    adb shell screenrecord --size 1280x720 $DEVICE_PATH &
+    # ---start recording---
+    # Added --time-limit to ensure it records for the specific duration
+    adb shell screenrecord --size 1280x720 --time-limit $TIME_LIMIT $DEVICE_PATH &
     RECORDING_PID=$!  
     
     echo "      Running Integration Tests..." | tee -a $LOG_FILE
     flutter test integration_test >> $LOG_FILE 2>&1
     
-    # --- stop recording -----
+    # --- stop recording---
     echo "      Tests Finished. Stopping Recording..." | tee -a $LOG_FILE
-    # Kill the background adb process (sends SIGINT to stop recording gracefully)
+    # Kill the background adb process to stop recording gracefully
     kill -2 $RECORDING_PID 
     
-    #  Increased sleep to 10 seconds to ensure file finalizes correctly
+    # Sleep to ensure file finalizes on device
     echo "      Finalizing video file..." | tee -a $LOG_FILE
     sleep 10
     
-    # --- pull file to computer ---
+    # --- pull file to computer---
     echo "      Pulling video file to computer..." | tee -a $LOG_FILE
     adb pull $DEVICE_PATH ./$VIDEO_FILE >> $LOG_FILE 2>&1
     
