@@ -3,12 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/business/cubit/profile/user_profile_state.dart';
 
 import 'package:projectdemo/core/constants/colors.dart';
+import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 
-
 class ProfileCubit extends Cubit<ProfileState> {
-  ProfileCubit() : super(ProfileLoading());
+  final P2PService? p2pService;
+
+  ProfileCubit({this.p2pService}) : super(ProfileLoading());
 
   Future<void> loadProfile(Map<String, dynamic>? args) async {
     emit(ProfileLoading());
@@ -20,13 +22,13 @@ class ProfileCubit extends Cubit<ProfileState> {
       UserProfile? user;
 
       if (isViewingSelf) {
-        final deviceId = args?['deviceId'] ?? args?['currentDeviceId'] ?? 'DEVICE-OWNER-ID'; // Fallback to default owner ID
+        final deviceId =
+            args?['deviceId'] ??
+            args?['currentDeviceId'] ??
+            'DEVICE-OWNER-ID'; // Fallback to default owner ID
 
-        
-          user = await db.getUserProfile(deviceId.toString());
-        
+        user = await db.getUserProfile(deviceId.toString());
 
-     
         if (user == null) {
           final defaultDeviceId = deviceId?.toString() ?? 'DEVICE-OWNER-ID';
           user = UserProfile(
@@ -116,6 +118,12 @@ class ProfileCubit extends Cubit<ProfileState> {
         await db.saveUserProfile(updatedProfile);
 
         emit(currentState.copyWith(profile: updatedProfile));
+
+        // Broadcast updated profile to all peers
+        if (p2pService != null) {
+          p2pService!.currentUser = updatedProfile;
+          p2pService!.broadcastProfile();
+        }
 
         //msln - Show success message via BlocListener - present the save operation succeeded
       } catch (e) {
