@@ -59,20 +59,34 @@ class P2PService {
       _host!.streamReceivedTexts().listen(_handleIncomingPacket);
 
       _host!.streamClientList().listen((clients) {
-        if (clients.length == lastClientCount) return;
-
+        final previousCount = lastClientCount;
         lastClientCount = clients.length;
+
+        // Only process if client count actually changed
+        if (clients.length == previousCount) return;
+
+        // Capture host's actual P2P ID from client list (first time only)
+        if (_myP2pId == "HOST" && clients.isNotEmpty) {
+          for (var client in clients) {
+            if (client.isHost) {
+              _myP2pId = client.id;
+              debugPrint("🏠 Host P2P ID captured: $_myP2pId");
+              // Update currentUser with real P2P ID
+              if (currentUser != null) {
+                currentUser = currentUser!.copyWith(deviceId: _myP2pId);
+                DatabaseHelper.instance.saveUserProfile(currentUser!);
+              }
+              break;
+            }
+          }
+        }
+
         _syncMembersFromClientList(clients);
 
-        //todo
-        // // Broadcast profile when new members join so they know who Host is
-        // if (clients.length > lastClientCount) {
-        //   // Future.delayed(
-        //   //   const Duration(milliseconds: 500),
-        //   //   broadcastHandshake,
-        //   // ); // Fast handshake first
-        //   // Future.delayed(const Duration(seconds: 1), broadcastProfile);
-        // }
+        // Broadcast profile ONCE when new members join (not on every update)
+        if (clients.length > previousCount && previousCount >= 0) {
+          Future.delayed(const Duration(milliseconds: 500), broadcastProfile);
+        }
       });
     } catch (e) {
       debugPrint("❌ Failed to initialize server at some step: $e");
@@ -173,6 +187,16 @@ class P2PService {
     isHost = false;
     currentUser = me;
 
+    // Save client's profile to database (without deviceId initially)
+    try {
+      await DatabaseHelper.instance.saveUserProfile(currentUser!);
+      debugPrint(
+        "💾 Client profile saved: ${currentUser!.name} (userId: ${currentUser!.userId})",
+      );
+    } catch (e) {
+      debugPrint("❌ Failed to save client profile: $e");
+    }
+
     // Initialize P2P client
     _client = FlutterP2pClient();
     await _client!.initialize();
@@ -208,9 +232,7 @@ class P2PService {
     _client!.connectWithDevice(device);
 
     _client!.streamClientList().listen((clients) {
-      if (clients.length == lastClientCount) return; //todo
       lastClientCount = clients.length;
-
       _syncMembersFromClientList(clients);
     });
 
@@ -220,12 +242,8 @@ class P2PService {
           .firstWhere((members) => members.isNotEmpty)
           .timeout(const Duration(seconds: 15));
 
-      //todo
-      // // 1. Handshake immediately so everyone gets our UUID mapping
-      // broadcastHandshake();
-
-      // // 2. Announce profile shortly after
-      // Future.delayed(const Duration(milliseconds: 500), broadcastProfile);
+      // Announce profile after joining so others know about us
+      Future.delayed(const Duration(milliseconds: 500), broadcastProfile);
     } catch (e) {
       disconnect();
       throw Exception('Connection timed out');
@@ -423,8 +441,11 @@ class P2PService {
             // Save to database
             try {
               await DatabaseHelper.instance.saveUserProfile(currentUser!);
+              debugPrint(
+                "✅ Client P2P ID assigned and saved: $_myP2pId (userId: ${currentUser!.userId})",
+              );
             } catch (e) {
-              debugPrint("Failed to save user profile with P2P ID: $e");
+              debugPrint("❌ Failed to save user profile with P2P ID: $e");
             }
           }
           break;
@@ -448,9 +469,13 @@ class P2PService {
       // Don't save our own profile
       if (userId == currentUser?.userId) return;
 
+      // Get the P2P device ID (from "from" field)
+      final deviceId = data["from"]?.toString();
+
       // Create UserProfile from received data
       final profile = UserProfile(
         userId: userId, // Permanent user ID
+        deviceId: deviceId, // Temporary P2P session ID
         name: data["name"]?.toString() ?? "Unknown",
         email: data["email"]?.toString() ?? "",
         phone: data["phone"]?.toString() ?? "",
@@ -464,6 +489,9 @@ class P2PService {
 
       // Save to database
       await DatabaseHelper.instance.saveUserProfile(profile);
+      debugPrint(
+        "✅ Saved peer profile: ${profile.name} (userId: ${profile.userId}, deviceId: ${profile.deviceId})",
+      );
     } catch (e) {
       debugPrint("❌ Error handling profile update: $e");
     }

@@ -8,8 +8,6 @@ import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery/network_discovery_state.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 
-
-
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;
   StreamSubscription? _discoverySubscription;
@@ -55,6 +53,7 @@ class NetworkCubit extends Cubit<NetworkState> {
 
   Future<void> connectToNetwork(BleDiscoveredDevice device) async {
     try {
+      if (isClosed) return; // Don't start if already closed
       emit(NetworkConnecting(device: device));
 
       // Connect to the selected device
@@ -88,9 +87,15 @@ class NetworkCubit extends Cubit<NetworkState> {
         print('Warning: failed to ensure network/device in local DB: $e');
       }
 
-      emit(NetworkConnected(device: device));
+      // Check if cubit is still open before emitting
+      if (!isClosed) {
+        emit(NetworkConnected(device: device));
+      }
     } catch (e) {
-      emit(NetworkError('Failed to connect: $e'));
+      // Check if cubit is still open before emitting error
+      if (!isClosed) {
+        emit(NetworkError('Failed to connect: $e'));
+      }
     }
   }
 

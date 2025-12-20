@@ -81,6 +81,16 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
     );
 
     try {
+      // Get recipient's userId for P2P transmission
+      String? receiverUserId;
+      try {
+        final db = DatabaseHelper.instance;
+        final recipientProfile = await db.getUserProfile(
+          state.recipientDeviceId,
+        );
+        receiverUserId = recipientProfile?.userId;
+      } catch (_) {}
+
       // Persist outgoing message first so we have a local message id to send
       final localId = await _persistOutgoingMessage(newMessage);
 
@@ -97,10 +107,14 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       final updatedMessages = List<Message>.from(state.messages)..add(saved);
       emit(state.copyWith(messages: updatedMessages));
 
-      // Send via P2P service
-      p2pService.sendPrivate(state.recipientDeviceId, text);
+      // Send via P2P service with receiverUserId
+      p2pService.sendPrivate(
+        state.recipientDeviceId,
+        text,
+        receiverUserId: receiverUserId,
+      );
     } catch (e) {
-      print('Failed to send message: $e');
+      debugPrint('Failed to send message: $e');
 
       // Optionally mark message as failed
     }
@@ -166,7 +180,10 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       }
 
       // Can't persist without sender
-      if (senderUserId == null) return message;
+      if (senderUserId == null) {
+        debugPrint("❌ Cannot persist incoming message: senderUserId is null");
+        return message;
+      }
 
       final id = await db.insertMessage(
         senderUserId: senderUserId,
@@ -176,13 +193,17 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         isDelivered: message.isDelivered,
       );
 
+      debugPrint(
+        "✅ Persisted incoming message: id=$id, sender=$senderUserId, receiver=$receiverUserId",
+      );
+
       return message.copyWith(
         messageId: id,
         senderUserId: senderUserId,
         receiverUserId: receiverUserId,
       );
     } catch (e) {
-      print('Failed to persist incoming message: $e');
+      debugPrint('❌ Failed to persist incoming message: $e');
       return message;
     }
   }
@@ -207,7 +228,10 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         receiverUserId = recipientProfile?.userId;
       }
 
-      if (senderUserId == null) return -1; // Can't persist without sender
+      if (senderUserId == null) {
+        debugPrint("❌ Cannot persist outgoing message: senderUserId is null");
+        return -1; // Can't persist without sender
+      }
 
       final id = await db.insertMessage(
         senderUserId: senderUserId,
@@ -217,9 +241,12 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         isDelivered: false,
       );
 
+      debugPrint(
+        "✅ Persisted outgoing message: id=$id, sender=$senderUserId, receiver=$receiverUserId",
+      );
       return id;
     } catch (e) {
-      print('Failed to persist outgoing message: $e');
+      debugPrint('❌ Failed to persist outgoing message: $e');
       return -1;
     }
   }

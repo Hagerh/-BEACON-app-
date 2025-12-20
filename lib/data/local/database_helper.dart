@@ -38,7 +38,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 4, // Updated to remove network_id from Messages
+      version: 5, // Updated to use user-based messaging instead of device-based
       password: encryptionKey, // SQLCipher encryption key
       onConfigure: (db) async {
         // Enable foreign keys
@@ -198,6 +198,33 @@ class DatabaseHelper {
           FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
         )
       ''');
+    }
+
+    if (oldVersion < 5) {
+      // Migration from device-based messaging to user-based messaging
+      // Check if Messages table has old columns (sender_device_id, receiver_device_id, network_id)
+      final columns = await db.rawQuery('PRAGMA table_info(Messages)');
+      final hasOldSchema = columns.any(
+        (c) => c['name']?.toString() == 'sender_device_id',
+      );
+
+      if (hasOldSchema) {
+        // Recreate Messages table with new schema
+        await db.execute('DROP TABLE IF EXISTS Messages');
+        await db.execute('''
+          CREATE TABLE Messages (
+            message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_user_id TEXT NOT NULL,
+            receiver_user_id TEXT,
+            message_content TEXT NOT NULL,
+            is_mine INTEGER NOT NULL DEFAULT 0,
+            is_delivered INTEGER NOT NULL DEFAULT 0,
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(sender_user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+            FOREIGN KEY(receiver_user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+          )
+        ''');
+      }
     }
   }
 
@@ -633,17 +660,14 @@ class DatabaseHelper {
     await updateDeviceUnread(deviceId, 0);
   }
 
-  /// Delete all messages involving a specific device inside a given network.
-  Future<void> deleteMessagesForDeviceInNetwork({
-    required int networkId,
-    required String deviceId,
-  }) async {
+  /// Delete all messages involving a specific user.
+  /// Note: Messages are now user-based (not device-based), so we delete by user_id.
+  Future<void> deleteMessagesForUser({required String userId}) async {
     final db = await instance.database;
     await db.delete(
       'Messages',
-      where:
-          'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
-      whereArgs: [networkId, deviceId, deviceId],
+      where: 'sender_user_id = ? OR receiver_user_id = ?',
+      whereArgs: [userId, userId],
     );
   }
 
@@ -670,7 +694,8 @@ class DatabaseHelper {
     );
   }
 
-  // Delete a device; if it is the host, delete its network (cascades devices/resources/messages)
+  // Delete a device; if it is the host, delete its network (cascades devices/resources)
+  // Note: Messages are user-based now, so they persist even when device is deleted
   Future<void> deleteDevice(String deviceId) async {
     final db = await instance.database;
     await db.transaction((txn) async {
@@ -688,19 +713,9 @@ class DatabaseHelper {
           : device['is_host'] == true;
       final networkId = device['network_id'] as int?;
 
-      // If this is a non-host device that is leaving, delete all messages
-      // involving it in this network so its chat history is purged.
-      if (!isHost && networkId != null) {
-        await txn.delete(
-          'Messages',
-          where:
-              'network_id = ? AND (sender_device_id = ? OR receiver_device_id = ?)',
-          whereArgs: [networkId, deviceId, deviceId],
-        );
-      }
-
       if (isHost && networkId != null) {
-        // Delete network; ON DELETE CASCADE removes its devices/resources/messages
+        // Delete network; ON DELETE CASCADE removes its devices/resources
+        // Messages are preserved because they're tied to users, not devices
         await txn.delete(
           'Networks',
           where: 'network_id = ?',
@@ -708,6 +723,7 @@ class DatabaseHelper {
         );
       } else {
         // Just delete the device
+        // User's messages persist (tied to user_id, not device_id)
         await txn.delete(
           'Devices',
           where: 'device_id = ?',

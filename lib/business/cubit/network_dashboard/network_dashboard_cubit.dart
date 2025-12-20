@@ -330,6 +330,16 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     String? receiverUserId,
   }) async {
     try {
+      // Get receiver's userId if not provided
+      String? resolvedReceiverUserId = receiverUserId;
+      if (resolvedReceiverUserId == null) {
+        try {
+          final db = DatabaseHelper.instance;
+          final receiverProfile = await db.getUserProfile(deviceId);
+          resolvedReceiverUserId = receiverProfile?.userId;
+        } catch (_) {}
+      }
+
       // Persist private message
       try {
         final senderUserId = p2pService.currentUser?.userId;
@@ -337,7 +347,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           final db = DatabaseHelper.instance;
           await db.insertMessage(
             senderUserId: senderUserId,
-            receiverUserId: receiverUserId,
+            receiverUserId: resolvedReceiverUserId,
             messageContent: message,
             isMine: true,
             isDelivered: true, // Delivered immediately in P2P
@@ -345,7 +355,11 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
         }
       } catch (_) {}
 
-      p2pService.sendPrivate(deviceId, message, receiverUserId: receiverUserId);
+      p2pService.sendPrivate(
+        deviceId,
+        message,
+        receiverUserId: resolvedReceiverUserId,
+      );
     } catch (e) {
       emit(NetworkDashboardError('Failed to send message: $e'));
     }
