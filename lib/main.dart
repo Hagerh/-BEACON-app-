@@ -110,6 +110,7 @@ class MyApp extends StatelessWidget {
           final deviceInfo =
               ModalRoute.of(context)?.settings.arguments
                   as Map<String, dynamic>?;
+
           final name = deviceInfo?['name'] ?? 'User';
           final status = deviceInfo?['status'] ?? 'Online';
           final deviceId = deviceInfo?['deviceId'] ?? 'UnknownID';
@@ -118,7 +119,8 @@ class MyApp extends StatelessWidget {
 
           return BlocProvider(
             create: (context) => PrivateChatCubit(
-              p2pService: p2pService,
+              context: context, // pass the BuildContext
+              p2pService: p2pService, // use the instance from MyApp
               recipientName: name,
               recipientDeviceId: deviceId,
               recipientStatus: status,
@@ -128,7 +130,13 @@ class MyApp extends StatelessWidget {
             child: PrivatechatScreen(),
           );
         },
-        resourceScreen: (context) => ResourceSharingScreen(),
+
+        //resourceScreen: (context) => ResourceSharingScreen(),
+        resourceScreen: (context) => ResourceSharingScreen(
+          deviceId: "MyDeviceID", // replace with actual deviceId
+          //loggedInUserName: "Alice", // optional
+          p2pService: p2pService, // pass the instance
+        ),
       },
     );
   }

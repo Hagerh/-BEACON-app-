@@ -8,6 +8,8 @@ import 'package:projectdemo/data/models/device_detail_model.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/data/models/message_model.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
+import 'package:projectdemo/data/models/resources.dart';
+import 'package:projectdemo/data/models/resource_request.dart';
 
 class P2PService {
   FlutterP2pHost? _host;
@@ -42,6 +44,10 @@ class P2PService {
   // Chat messages
   final _messagesController = StreamController<Message>.broadcast();
   Stream<Message> get messagesStream => _messagesController.stream;
+
+  // Resource updates stream
+  final _resourceController = StreamController<ResourceItem>.broadcast();
+  Stream<ResourceItem> get resourceStream => _resourceController.stream;
 
   // ---------------- SERVER METHODS ------------------
 
@@ -375,6 +381,23 @@ class P2PService {
     }
   }
 
+  void sendResource(ResourceItem item) {
+    sendBroadcast(jsonEncode({"type": "resource", "resource": item.toJson()}));
+  }
+
+  // Send resource request to a specific device
+  void sendResourceRequest(String targetDeviceId, ResourceRequest request) {
+    sendPrivate(targetDeviceId, jsonEncode(request.toJson()));
+  }
+
+  // Send resource approval/rejection
+  void sendResourceResponse(
+    String targetDeviceId,
+    Map<String, dynamic> response,
+  ) {
+    sendPrivate(targetDeviceId, jsonEncode(response));
+  }
+
   // ---------------- RECEIVING PACKETS ------------------
 
   Future<void> _handleIncomingPacket(String raw) async {
@@ -435,6 +458,11 @@ class P2PService {
         case "inactive_notify":
           break;
         case "active_notify":
+          break;
+
+        case "resource":
+          final resource = ResourceItem.fromJson(data["resource"]);
+          _resourceController.add(resource);
           break;
       }
     } catch (e) {

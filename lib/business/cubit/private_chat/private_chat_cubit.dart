@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/data/models/message_model.dart';
+import 'package:projectdemo/data/models/resource_request.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/business/cubit/private_chat/private_chat_state.dart';
@@ -10,9 +12,11 @@ import 'package:projectdemo/business/cubit/private_chat/private_chat_state.dart'
 class PrivateChatCubit extends Cubit<PrivateChatState> {
   final P2PService p2pService;
   StreamSubscription<Message>? _messageSubscription;
+  final BuildContext context; // Needed for dialogs
 
   PrivateChatCubit({
     required this.p2pService,
+    required this.context,
     required String recipientName,
     required String recipientDeviceId,
     required String recipientStatus,
@@ -32,24 +36,26 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
     _startListeningToMessages();
   }
 
-  // Start listening to incoming messages from P2P service
+  // -----------------------------
+  // Message listener
+  // -----------------------------
   void _startListeningToMessages() {
     _messageSubscription = p2pService.messagesStream.listen(
       (message) async {
-        // Only handle messages FROM the current chat peer
-        // (not TO them - those are our outgoing messages)
-        debugPrint("🥰Received message in PrivateChatCubit: ${message.text} from ${message.senderDeviceId} and!! ${state.recipientDeviceId}");
-        if (message.senderDeviceId != state.recipientDeviceId) {
-          return; // Ignore messages from other peers
-        }
-
         try {
-          final persisted = await _persistIncomingMessage(message);
+          // If the message is JSON and contains a type, handle as special request
+          if (_isJson(message.text)) {
+            final data = jsonDecode(message.text);
+            if (data.containsKey('type')) {
+              handleIncomingMessage(message.text, context);
+              return;
+            }
+          }
 
-          // Add the persisted message (with messageId) to state
+          // Normal chat message
+          final persisted = await _persistIncomingMessage(message);
           _receiveMessage(persisted);
         } catch (e) {
-          // If persistence failed, still show message without id
           _receiveMessage(message);
         }
       },
@@ -59,6 +65,9 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
     );
   }
 
+  // -----------------------------
+  // Sending normal chat messages
+  // -----------------------------
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
@@ -66,52 +75,131 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       text: text,
       isMine: true,
       time: TimeOfDay.now(),
-      isDelivered: true, // Always delivered immediately in P2P
+      isDelivered: true,
     );
 
     try {
-      // Persist outgoing message first so we have a local message id to send
       final localId = await _persistOutgoingMessage(newMessage);
 
-      if (localId == -1) {
-        // Persistence failed, add message without id so user still sees it
-        final updatedMessages = List<Message>.from(state.messages)
-          ..add(newMessage);
-        emit(state.copyWith(messages: updatedMessages));
-        return;
-      }
-
-      // Add persisted message (with id) to UI
-      final saved = newMessage.copyWith(messageId: localId);
+      final saved = localId != -1
+          ? newMessage.copyWith(messageId: localId)
+          : newMessage;
       final updatedMessages = List<Message>.from(state.messages)..add(saved);
       emit(state.copyWith(messages: updatedMessages));
 
-      // Send via P2P service
+      // Send via P2P
       p2pService.sendPrivate(state.recipientDeviceId, text);
     } catch (e) {
       print('Failed to send message: $e');
-
-      // Optionally mark message as failed
     }
   }
-  // Receive a message from the P2P service
 
   void _receiveMessage(Message message) {
     final updatedMessages = List<Message>.from(state.messages)..add(message);
     emit(state.copyWith(messages: updatedMessages));
   }
 
+  // -----------------------------
+  // Resource request handling
+  // -----------------------------
+  void handleIncomingMessage(String messageJson, BuildContext context) {
+    final Map<String, dynamic> data = jsonDecode(messageJson);
+
+    switch (data['type']) {
+      case 'resource_request':
+        final request = ResourceRequest.fromJson(data);
+        _showResourceRequestDialog(context, request);
+        break;
+
+      case 'resource_request_approved':
+        _receiveMessage(
+          Message(
+            text: "Your request for ${data['resourceId']} was approved!",
+            isMine: false,
+            time: TimeOfDay.now(),
+            isDelivered: true, // <-- add this
+          ),
+        );
+        break;
+
+      case 'resource_request_rejected':
+        _receiveMessage(
+          Message(
+            text: "Your request for ${data['resourceId']} was rejected.",
+            isMine: false,
+            time: TimeOfDay.now(),
+            isDelivered: true, // <-- add this
+          ),
+        );
+        break;
+
+      default:
+        // normal chat
+        _receiveMessage(
+          Message(
+            text: data['text'] ?? '',
+            isMine: false,
+            time: TimeOfDay.now(),
+            isDelivered: true,
+            senderDeviceId: data['senderDeviceId'],
+            receiverDeviceId: data['receiverDeviceId'],
+          ),
+        );
+    }
+  }
+
+  void _showResourceRequestDialog(
+    BuildContext context,
+    ResourceRequest request,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Resource Request"),
+        content: Text(
+          "${request.requestorName} requests ${request.quantity} of ${request.resourceId}",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              // Reject
+              p2pService.sendResourceResponse(request.requestorDeviceId, {
+                "type": "resource_request_rejected",
+                "resourceId": request.resourceId,
+                "offerId": request.offerId,
+              });
+              Navigator.pop(context);
+            },
+            child: const Text("Reject"),
+          ),
+          TextButton(
+            onPressed: () {
+              // Approve
+              p2pService.sendResourceResponse(request.requestorDeviceId, {
+                "type": "resource_request_approved",
+                "resourceId": request.resourceId,
+                "offerId": request.offerId,
+                "quantity": request.quantity,
+              });
+              Navigator.pop(context);
+            },
+            child: const Text("Approve"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -----------------------------
+  // History persistence
+  // -----------------------------
   Future<void> _loadHistory() async {
-    // Load recent messages for this chat from DB if network id is known
     try {
       final db = DatabaseHelper.instance;
 
-      // Ensure we have a local currentDeviceId for proper persistence
-      String? currentId = state.currentDeviceId;
-      if (currentId == null) {
-        currentId = await DeviceIdService.getDeviceId();
-        emit(state.copyWith(currentDeviceId: currentId));
-      }
+      String? currentId =
+          state.currentDeviceId ?? await DeviceIdService.getDeviceId();
+      emit(state.copyWith(currentDeviceId: currentId));
 
       final msgs = await db.fetchRecentMessages(
         networkId: state.networkId,
@@ -124,12 +212,8 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         emit(state.copyWith(messages: List.from(msgs)));
       }
 
-      // Reset unread count for this peer when opening chat
-      try {
-        await db.resetDeviceUnread(state.recipientDeviceId);
-      } catch (_) {}
+      await db.resetDeviceUnread(state.recipientDeviceId);
     } catch (e) {
-      // ignore - failure to read history should not crash chat
       print('Failed to load chat history: $e');
     }
   }
@@ -137,49 +221,31 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   Future<Message> _persistIncomingMessage(Message message) async {
     try {
       final db = DatabaseHelper.instance;
-
-      // Determine networkId: prefer state, otherwise try to resolve from sender
       int? networkId = state.networkId;
+      String? currentId =
+          state.currentDeviceId ?? await DeviceIdService.getDeviceId();
+      emit(state.copyWith(currentDeviceId: currentId));
 
-      // Ensure we have a local currentDeviceId for proper persistence
-      String? currentId = state.currentDeviceId;
-      if (currentId == null) {
-        currentId = await DeviceIdService.getDeviceId();
-        emit(state.copyWith(currentDeviceId: currentId));
-      }
-
-      // Peer id should come from the message sender if available
       final peerId = message.senderDeviceId ?? state.recipientDeviceId;
-
-      // Try to resolve network id if we don't have one yet
-      if (networkId == null && peerId != null) {
-        networkId = await db.getNetworkIdByDeviceId(peerId);
+      if (networkId == null) {
+        networkId = await db.getNetworkIdByDeviceId(peerId!);
       }
-
-      // If we still don't know the network, we cannot persist safely
       if (networkId == null) return message;
 
-      // Ensure the sender (peer) exists in Devices table so FK constraint won't fail
-      try {
-        await db.upsertDevice(
-          deviceId: peerId!,
-          networkId: networkId,
-          name: peerId,
-          status: 'Active',
-        );
-      } catch (_) {}
-
-      // Ensure local device exists in Devices table too
-      try {
-        final localUser = await db.getUserProfile(currentId!);
-        final localName = localUser?.name ?? 'Local Device';
-        await db.upsertDevice(
-          deviceId: currentId,
-          networkId: networkId,
-          name: localName,
-          status: 'Active',
-        );
-      } catch (_) {}
+      await db.upsertDevice(
+        deviceId: peerId!,
+        networkId: networkId,
+        name: peerId,
+        status: 'Active',
+      );
+      final localName =
+          (await db.getUserProfile(currentId!))?.name ?? 'Local Device';
+      await db.upsertDevice(
+        deviceId: currentId,
+        networkId: networkId,
+        name: localName,
+        status: 'Active',
+      );
 
       final id = await db.insertMessage(
         networkId: networkId,
@@ -206,7 +272,7 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       final db = DatabaseHelper.instance;
       if (state.networkId == null) return -1;
 
-      final id = await db.insertMessage(
+      return await db.insertMessage(
         networkId: state.networkId!,
         senderDeviceId: state.currentDeviceId,
         receiverDeviceId: state.recipientDeviceId,
@@ -214,15 +280,27 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
         isMine: true,
         isDelivered: false,
       );
-
-      return id;
     } catch (e) {
       print('Failed to persist outgoing message: $e');
       return -1;
     }
   }
 
-  // Stop listening when closing the chat
+  // -----------------------------
+  // Utility
+  // -----------------------------
+  bool _isJson(String str) {
+    try {
+      jsonDecode(str);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // -----------------------------
+  // Cleanup
+  // -----------------------------
   void stopListening() {
     _messageSubscription?.cancel();
     _messageSubscription = null;
@@ -231,7 +309,6 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
   @override
   Future<void> close() {
     _messageSubscription?.cancel();
-
     return super.close();
   }
 }
