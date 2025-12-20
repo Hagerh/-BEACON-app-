@@ -15,7 +15,7 @@ class DeviceDetail {
     required this.status,
     required this.signalStrength,
     required this.avatar,
-    required this.last_seen_at
+    required this.last_seen_at,
     required this.color,
   });
 
@@ -62,11 +62,12 @@ class DeviceDetail {
       name: name,
       deviceId: deviceId,
       status: status ?? this.status,
-      unread: unread ?? this.unread,
+      //unread: unread ?? this.unread,
       signalStrength: signalStrength ?? this.signalStrength,
-      distance: distance ?? this.distance,
+      //distance: distance ?? this.distance,
       avatar: avatar,
       color: color,
+      last_seen_at: last_seen_at,
     );
   }
 

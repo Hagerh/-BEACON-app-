@@ -50,30 +50,30 @@ class DeviceCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if ((device.unread ) > 0)
-                        Positioned(
-                          right: -6,
-                          top: -6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.alertRed,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.primaryBackground, width: 1.5),
-                            ),
-                            constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-                            child: Center(
-                              child: Text(
-                                (device.unread ) > 99 ? '99+' : '${device.unread}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+                      // if ((device.unread ) > 0) //todo unread
+                      //   Positioned(
+                      //     right: -6,
+                      //     top: -6,
+                      //     child: Container(
+                      //       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      //       decoration: BoxDecoration(
+                      //         color: AppColors.alertRed,
+                      //         borderRadius: BorderRadius.circular(12),
+                      //         border: Border.all(color: AppColors.primaryBackground, width: 1.5),
+                      //       ),
+                      //       constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      //       child: Center(
+                      //         child: Text(
+                      //           (device.unread ) > 99 ? '99+' : '${device.unread}',
+                      //           style: const TextStyle(
+                      //             color: Colors.white,
+                      //             fontSize: 11,
+                      //             fontWeight: FontWeight.bold,
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
                     ],
                   ),
                   const SizedBox(width: 16),
@@ -116,13 +116,6 @@ class DeviceCard extends StatelessWidget {
                             const SizedBox(width: 12),
                             const Icon(Icons.location_on, size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
-                            Text(
-                              device.distance,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
                           ],
                         ),
                       ],

@@ -141,11 +141,12 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                         .firstWhere((d) => d.deviceId == member.deviceId);
                     if (currentDevice.status != member.status ||
                         currentDevice.name != member.name ||
-                        currentDevice.signalStrength != member.signalStrength ||
-                        currentDevice.distance != member.distance) {
-                      hasChanges = true;
-                      break;
-                    }
+                        currentDevice.signalStrength != member.signalStrength 
+                    //     || currentDevice.distance != member.distance
+                    ) {
+                       hasChanges = true;
+                       break;
+                     }
                   } catch (e) {
                     // Device not found in current state, treat as change
                     hasChanges = true;
@@ -167,7 +168,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   name: member.name,
                   status: member.status,
                   signalStrength: member.signalStrength,
-                  distance: member.distance,
+                  //distance: member.distance,
                   avatar: member.avatar,
                   color: member.color.value.toString(),
                 );

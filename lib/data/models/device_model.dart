@@ -23,6 +23,7 @@ class Device {
       connectors: (m['connectors'] is int)
           ? m['connectors'] as int
           : int.tryParse(m['connectors']?.toString() ?? '0') ?? 0,
+      network_name: m['network_name']?.toString() ?? 'Unknown', //todo remove
     );
   }
 
