@@ -10,6 +10,7 @@ import 'package:projectdemo/data/models/message_model.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/resources.dart';
 import 'package:projectdemo/data/models/resource_request.dart';
+import 'package:projectdemo/core/services/notfication_service.dart';
 
 class P2PService {
   FlutterP2pHost? _host;
@@ -17,6 +18,8 @@ class P2PService {
 
   String? _myP2pId;
   String? get myP2pId => _myP2pId;
+
+  NotificationService notificationService = NotificationService();
 
   bool isHost = false;
   UserProfile? currentUser;
@@ -586,7 +589,7 @@ class P2PService {
       // }
       
       if (isHost) {
-        //showDeviceJoinedNotification(client.username, client.id); //todo notifications
+        notificationService.showDeviceJoinedNotification(deviceName: client.username, deviceId: client.id);
         assignP2pId(client.id);
       }
     }
