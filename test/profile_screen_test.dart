@@ -98,7 +98,7 @@ void main() {
       await pumpProfileScreen(tester);
 
       // Assert
-      // CHANGE THIS LINE: Accept that the name appears in both header and form
+     
       expect(find.text('John Doe'), findsAtLeastNWidgets(1));
 
       expect(find.text('john@example.com'), findsOneWidget);
@@ -115,8 +115,7 @@ void main() {
       // Act
       await pumpProfileScreen(tester);
 
-      // Assert
-      // The "Save Changes" button is part of UserInfoCardWidget when editable is true
+     // Assert 
       expect(find.text('Save Changes'), findsOneWidget);
     });
 
