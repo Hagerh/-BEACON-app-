@@ -5,6 +5,7 @@ import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/create_network/create_network_state.dart';
+
 // Handles P2P network creation
 class CreateNetworkCubit extends Cubit<CreateNetworkState> {
   final P2PService _p2pService;
@@ -61,7 +62,6 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
         await db.upsertDevice(
           deviceId: currentUser.deviceId,
-          networkId: networkId,
           name: currentUser.name,
           status: currentUser.status,
           isHost: 1,

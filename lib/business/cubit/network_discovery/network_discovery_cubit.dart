@@ -8,8 +8,6 @@ import 'package:projectdemo/data/models/user_profile_model.dart';
 import 'package:projectdemo/business/cubit/network_discovery/network_discovery_state.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 
-
-
 class NetworkCubit extends Cubit<NetworkState> {
   final P2PService p2pService;
   StreamSubscription? _discoverySubscription;
@@ -63,21 +61,14 @@ class NetworkCubit extends Cubit<NetworkState> {
       // Ensure we have a local network record for this server so incoming messages can be persisted
       try {
         final db = DatabaseHelper.instance;
-        final existing = await db.getNetworkByName(device.deviceName);
-        int networkId;
-        if (existing == null) {
-          networkId = await db.createNetwork(
-            networkName: device.deviceName,
-            hostDeviceId: device.deviceAddress,
-          );
-        } else {
-          networkId = existing['network_id'] as int;
-        }
+        final networkId = await db.createNetwork(
+          networkName: device.deviceName,
+          hostDeviceId: device.deviceAddress,
+        );
 
         // Upsert the host device entry locally (mark as host)
         await db.upsertDevice(
           deviceId: device.deviceAddress,
-          networkId: networkId,
           name: device.deviceName,
           status: 'Active',
           isHost: 1,
