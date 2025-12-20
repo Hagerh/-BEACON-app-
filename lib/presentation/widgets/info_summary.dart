@@ -9,8 +9,6 @@ class InfoSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nonConnected = total - connected;
-
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.all(16),
@@ -21,23 +19,25 @@ class InfoSummary extends StatelessWidget {
         border: Border.all(color: AppColors.connectionTeal),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildInfoItem(Icons.devices, '$connected', 'Connected'),
-          const SizedBox(width: 40),
-          _buildInfoItem(Icons.group_off, '$nonConnected', 'Not connected'),
-          const SizedBox(width: 40),
-          _buildInfoItem(Icons.devices_other, '$total', 'Total'),
+          _buildInfoItem(Icons.devices, '$connected', 'Connected Devices'),
         ],
       ),
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String value, String label, [Color? valueColor]) {
-    return Column(
+  Widget _buildInfoItem(
+    IconData icon,
+    String value,
+    String label, [
+    Color? valueColor,
+  ]) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: AppColors.connectionTeal, size: 28),
-        const SizedBox(height: 8),
+        const SizedBox(width: 20),
         Text(
           value,
           style: TextStyle(
@@ -46,15 +46,12 @@ class InfoSummary extends StatelessWidget {
             color: valueColor ?? AppColors.textPrimary,
           ),
         ),
+        const SizedBox(width: 10),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
       ],
     );
   }
 }
-

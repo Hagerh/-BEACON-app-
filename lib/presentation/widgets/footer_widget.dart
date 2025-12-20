@@ -26,42 +26,46 @@ class FooterWidget extends StatelessWidget {
         return;
     }
 
-    // Check if the target route already exists in the navigation stack
-    final navigator = Navigator.of(context);
-    bool routeExists = false;
-    navigator.popUntil((route) {
-      if (route.settings.name == targetRoute) {
-        routeExists = true;
-        return true; // Stop popping
-      }
-      return false; // Continue popping
-    });
-
-    if (routeExists) {
-      // Route exists, just pop to it (no need to push)
-      return;
-    }
-
-    // Route doesn't exist, push it without replacing
-    // But first, pop back to the dashboard if we're navigating away from it
-    if (currentPage == 0 && index != 0) {
-      // We're leaving dashboard, push the new route
-      Navigator.pushNamed(context, targetRoute);
-    } else if (currentPage != 0 && index == 0) {
-      // We're going back to dashboard, pop until we find it or push it
+    // For dashboard navigation, try to pop back to existing route
+    if (index == 0) {
+      // Check if dashboard route exists in stack
+      bool found = false;
       Navigator.popUntil(context, (route) {
         if (route.settings.name == targetRoute) {
-          return true;
+          found = true;
+          return true; // Stop popping, found the route
         }
-        // If we reach the first route and dashboard wasn't found, stop
+        // Don't pop past the first route
         if (route.isFirst) {
-          Navigator.pushNamed(context, targetRoute);
-          return true;
+          return true; // Stop popping
         }
-        return false;
+        return false; // Continue popping
       });
+
+      // If dashboard wasn't found, we can't navigate to it without networkName
+      // This shouldn't happen in normal flow, but handle gracefully
+      if (!found) {
+        // Try to get networkName from current route arguments if available
+        final currentRoute = ModalRoute.of(context);
+        final currentArgs = currentRoute?.settings.arguments;
+        String? networkName;
+
+        if (currentArgs is Map<String, dynamic>) {
+          networkName = currentArgs['networkName']?.toString();
+        }
+
+        // If we have networkName, push new dashboard route
+        if (networkName != null) {
+          Navigator.pushNamed(
+            context,
+            targetRoute,
+            arguments: {'networkName': networkName},
+          );
+        }
+        // If no networkName, can't navigate - this is an error state
+      }
     } else {
-      // Navigating between non-dashboard screens
+      // For non-dashboard routes, just push them
       Navigator.pushNamed(context, targetRoute);
     }
   }

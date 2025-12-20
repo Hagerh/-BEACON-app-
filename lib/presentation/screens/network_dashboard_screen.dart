@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:projectdemo/core/constants/colors.dart';
@@ -31,8 +32,18 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
     super.initState();
     // Start listening to members stream
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NetworkDashboardCubit>().startListening(widget.networkName);
-      _loadLocalNetworkSummary();
+      if (!mounted) return;
+      try {
+        final cubit = context.read<NetworkDashboardCubit>();
+        // Only start listening if not already listening (check current state)
+        if (cubit.state is NetworkDashboardInitial ||
+            cubit.state is NetworkDashboardLoading) {
+          cubit.startListening(widget.networkName);
+        }
+        _loadLocalNetworkSummary();
+      } catch (e) {
+        debugPrint('Error initializing dashboard: $e');
+      }
     });
   }
 
@@ -51,17 +62,32 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
       );
 
       if (match.id.isNotEmpty) {
-        _localSummary =
-            'Last seen ${match.lastSeen} • ${match.connectors} devices';
+        // Format last seen time to show date and time
+        String formattedDateTime = _formatDateTime(match.lastSeen);
+        _localSummary = 'Last Seen $formattedDateTime';
         if (mounted) setState(() {});
       }
     } catch (_) {}
   }
 
+  String _formatDateTime(String isoString) {
+    if (isoString.isEmpty) return '';
+
+    try {
+      final dateTime = DateTime.parse(isoString);
+      final date = '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+      final time =
+          '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      return '$date $time';
+    } catch (_) {
+      return isoString;
+    }
+  }
+
   @override
   void dispose() {
-    // Stop listening when leaving
-    context.read<NetworkDashboardCubit>().stopListening();
+    // Don't stop listening here - cubit persists across navigation
+    // Listening will only stop when actually leaving the network
     super.dispose();
   }
 
@@ -305,16 +331,25 @@ class _NetworkDashboardScreenState extends State<NetworkDashboardScreen> {
               if (state is NetworkDashboardLoaded) {
                 return Row(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(state.networkName),
-                        if (_localSummary != null)
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                           Text(
-                            _localSummary!,
-                            style: const TextStyle(fontSize: 12),
+                            state.networkName,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                      ],
+                          if (_localSummary != null)
+                            Text(
+                              _localSummary!,
+                              style: const TextStyle(fontSize: 12),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 8),
                     if (state.isServer)
