@@ -4,20 +4,18 @@ class DeviceDetail {
   final String name;
   final String deviceId;
   final String status;
-  final int unread;
   final int signalStrength;
-  final String distance;
   final String avatar;
+  final DateTime last_seen_at;
   final Color color;
 
   DeviceDetail({
     required this.name,
     required this.deviceId,
     required this.status,
-    required this.unread,
     required this.signalStrength,
-    required this.distance,
     required this.avatar,
+    required this.last_seen_at
     required this.color,
   });
 
@@ -44,13 +42,10 @@ class DeviceDetail {
       name: m['name']?.toString() ?? 'Unknown',
       deviceId: m['device_id']?.toString() ?? 'unknown',
       status: m['status']?.toString() ?? 'Idle',
-      unread: (m['unread'] is int)
-          ? m['unread'] as int
-          : int.tryParse(m['unread']?.toString() ?? '0') ?? 0,
       signalStrength: (m['signal_strength'] is int)
           ? m['signal_strength'] as int
           : int.tryParse(m['signal_strength']?.toString() ?? '0') ?? 0,
-      distance: m['distance']?.toString() ?? '--',
+      last_seen_at: DateTime.parse(m['last_seen_at']?.toString() ?? '0'),
       avatar: m['avatar']?.toString() ?? '?',
       color: parseColor(m['color']),
     );
@@ -101,9 +96,7 @@ class DeviceDetail {
 
       if (d1.name != d2.name ||
           d1.status != d2.status ||
-          d1.unread != d2.unread ||
           d1.signalStrength != d2.signalStrength ||
-          d1.distance != d2.distance ||
           d1.avatar != d2.avatar ||
           d1.color != d2.color) {
         return false;
