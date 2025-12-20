@@ -1,13 +1,13 @@
 class Device {
   final String id;
   final String status;
-  final String lastSeen;
+  final String network_name;
   final int connectors;
 
   Device({
-    required this.lastSeen,
     required this.id,
     required this.status,
+    required this.network_name,
     required this.connectors,
   });
 
@@ -19,12 +19,11 @@ class Device {
           (m['network_name']?.toString()) ??
           '',
       status:
-          m['status']?.toString() ?? m['host_status']?.toString() ?? 'Unknown',
-      lastSeen:
-          m['last_seen_at']?.toString() ?? (m['lastSeen']?.toString() ?? ''),
+          m['status']?.toString() ?? m['host_status']?.toString() ?? 'Active',
       connectors: (m['connectors'] is int)
           ? m['connectors'] as int
           : int.tryParse(m['connectors']?.toString() ?? '0') ?? 0,
+      network_name: m['network_name']?.toString() ?? 'Unknown', //todo remove
     );
   }
 
@@ -32,7 +31,6 @@ class Device {
     return {
       'id': id,
       'status': status,
-      'last_seen_at': lastSeen,
       'connectors': connectors,
     };
   }

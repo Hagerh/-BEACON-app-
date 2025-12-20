@@ -133,11 +133,12 @@ class P2PService {
       name: currentUser!.name,
       deviceId: _myP2pId!,
       status: "Active",
-      unread: 0,
+      //unread: 0,
       signalStrength: 100,
-      distance: '--',
+      //distance: '--',
       avatar: currentUser!.name.isNotEmpty ? currentUser!.name[0] : '?',
       color: Colors.blue,
+      last_seen_at: DateTime.now(),
     );
 
     _members
@@ -498,11 +499,12 @@ class P2PService {
           name: client.username,
           deviceId: client.id,
           status: "Active",
-          unread: 0,
+          //unread: 0,
           signalStrength: 100,
-          distance: '--',
+          //distance: '--',
           avatar: client.username.isNotEmpty ? client.username[0] : '?',
           color: client.isHost ? Colors.blue : Colors.green,
+          last_seen_at: DateTime.now(), //todo
         ),
       );
 
@@ -570,11 +572,12 @@ class P2PService {
       deviceId:
           deviceId ?? 'mock-device-${DateTime.now().millisecondsSinceEpoch}',
       status: status,
-      unread: 0,
+      //unread: 0,
       signalStrength: signalStrength,
-      distance: distance,
+      //distance: distance,
       avatar: (name ?? 'M')[0].toUpperCase(),
       color: Colors.purple,
+      last_seen_at: DateTime.now(),
     );
 
     // Add to members list
@@ -621,11 +624,12 @@ class P2PService {
       name: name ?? current.name,
       deviceId: current.deviceId,
       status: status ?? current.status,
-      unread: current.unread,
+      //unread: current.unread,
       signalStrength: signalStrength ?? current.signalStrength,
-      distance: distance ?? current.distance,
+      //distance: distance ?? current.distance,
       avatar: current.avatar,
       color: current.color,
+      last_seen_at: current.last_seen_at,
     );
 
     _membersController.add(List.unmodifiable(_members));
