@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
 
 import 'package:projectdemo/core/services/p2p_service.dart';
 import 'package:projectdemo/core/services/device_id_service.dart';
 import 'package:projectdemo/data/local/database_helper.dart';
 import 'package:projectdemo/data/models/device_detail_model.dart';
+import 'package:projectdemo/business/cubit/network_dashboard/network_dashboard_state.dart';
+
 
 class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   final P2PService p2pService;
@@ -112,8 +113,6 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           final db = DatabaseHelper.instance;
 
           if (networkId != null) {
-            await db.updateNetworkParticipants(networkId, members);
-
             for (var member in members) {
               // Always update timestamps
               await db.updateDeviceLastSeen(member.deviceId);
@@ -173,6 +172,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
               }
             }
 
+            // Always read from DB to get updated timestamps
             final devices = await db.getDevicesByNetworkId(networkId);
 
             // Only emit if state actually changed
@@ -460,6 +460,15 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     // Update P2P service and state
     p2pService.updateMaxMembers(max);
     emit(current.copyWith(maxConnections: max));
+  }
+
+  /// Add a mock device for testing (debug only)
+  void addMockDevice() {
+    p2pService.addMockDevice(
+      name: 'Test Device ${DateTime.now().second}',
+      signalStrength: 75,
+      distance: '10m',
+    );
   }
 
   @override

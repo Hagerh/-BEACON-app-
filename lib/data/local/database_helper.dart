@@ -458,42 +458,6 @@ class DatabaseHelper {
     }
   }
 
-  Future<void> updateNetworkParticipants(
-    int networkId,
-    List<DeviceDetail> activeMembers,
-  ) async {
-    final db = await instance.database;
-
-    await db.transaction((txn) async {
-      // 1. Get list of currently active Device IDs from the P2P service
-      final activeIds = activeMembers.map((m) => m.deviceId).toList();
-
-      // 2. Mark devices NOT in this list as 'Offline'
-      // We exclude the host (is_host=1) from being marked offline via this check if needed,
-      // though usually the host is in the active list anyway.
-      if (activeIds.isEmpty) {
-        await txn.update(
-          'Devices',
-          {'status': 'Offline'},
-          where: 'network_id = ? AND is_host = 0',
-          whereArgs: [networkId],
-        );
-      } else {
-        final placeholders = List.filled(activeIds.length, '?').join(',');
-        await txn.rawUpdate(
-          '''
-          UPDATE Devices 
-          SET status = 'Offline' 
-          WHERE network_id = ? 
-          AND is_host = 0 
-          AND device_id NOT IN ($placeholders)
-          ''',
-          [networkId, ...activeIds],
-        );
-      }
-    });
-  }
-
   // Create a new network and return its ID
   Future<int> createNetwork({
     required String networkName,
