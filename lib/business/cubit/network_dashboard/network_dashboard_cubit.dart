@@ -328,12 +328,20 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
   }
 
   // Kick a user from the network (server)
-  void kickUser(String deviceId) {
+  Future<void> kickUser(String deviceId) async {
     try {
+      // 1. Send kick packet and remove from memory list
       p2pService.kickUser(deviceId);
-      // Member will be removed automatically removed via streamClientList
-      //?stopListening();
-      //todo: go back to discovery screen
+
+      // 2. Delete from database (which also deletes messages)
+      await DatabaseHelper.instance.deleteDevice(deviceId);
+
+      // 3. Update UI state immediately by refreshing from DB
+      final s = state;
+      if (s is NetworkDashboardLoaded && s.networkId != null) {
+        final devices = await DatabaseHelper.instance.getDevicesByNetworkId(s.networkId!);
+        emit(s.copyWith(connectedDevices: devices));
+      }
     } catch (e) {
       emit(NetworkDashboardError('Failed to kick user: $e'));
     }

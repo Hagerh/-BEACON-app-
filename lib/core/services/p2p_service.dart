@@ -328,6 +328,10 @@ class P2PService {
       "to": userId,
       "message": "removed by server",
     });
+
+    // Manually remove from local list for immediate UI feedback
+    _members.removeWhere((m) => m.deviceId == userId);
+    _membersController.add(List.unmodifiable(_members));
   }
 
   void assignP2pId(String userId) {
