@@ -62,6 +62,7 @@ class CreateNetworkCubit extends Cubit<CreateNetworkState> {
 
         await db.upsertDevice(
           deviceId: currentUser.deviceId,
+          networkId: networkId,
           name: currentUser.name,
           status: currentUser.status,
           isHost: 1,

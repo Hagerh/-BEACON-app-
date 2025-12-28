@@ -98,7 +98,7 @@ class P2PService {
       // Create P2P group
       await _host!.createGroup(advertise: true);
       _myP2pId = "HOST";
-      _registerHostAsMember();
+      // Removed _registerHostAsMember() to avoid host seeing themselves in the list
     } catch (e) {
       debugPrint("Failed to create network: $e");
       rethrow;
@@ -136,27 +136,7 @@ class P2PService {
     }
   }
 
-  void _registerHostAsMember() {
-    if (currentUser == null) return;
-    debugPrint("🥰${currentUser!.deviceId}");
-    final hostEntry = DeviceDetail(
-      name: currentUser!.name,
-      deviceId: "HOST",
-      status: "Active",
-      //unread: 0,
-      signalStrength: 100,
-      //distance: '--',
-      avatar: currentUser!.name.isNotEmpty ? currentUser!.name[0] : '?',
-      color: Colors.blue,
-      last_seen_at: DateTime.now(),
-    );
-
-    _members
-      ..clear()
-      ..add(hostEntry);
-
-    _membersController.add(List.unmodifiable(_members));
-  }
+  // Removed _registerHostAsMember() as the local user shouldn't be in the members list
 
   String getHostP2pId(List<P2pClientInfo> clients) {
     debugPrint("🧹Entered");
@@ -174,26 +154,7 @@ class P2PService {
     return hostId;
   }
 
-  void updateHostDeviceId(String newId) {
-    final index = _members.indexWhere((d) => d.deviceId == "HOST");
-    if (index != -1) {
-      final current = _members[index];
-      _members[index] = DeviceDetail(
-        name: current.name,
-        deviceId: newId,
-        status: current.status,
-        //unread: current.unread,
-        signalStrength: current.signalStrength,
-        //distance: current.distance,
-        avatar: current.avatar,
-        color: current.color,
-        last_seen_at: current.last_seen_at,
-      );
-
-      _membersController.add(List.unmodifiable(_members));
-      debugPrint('🔄 Host device ID updated: $newId');
-    }
-  }
+  // Removed updateHostDeviceId() as the local user is no longer in the members list
 
   // ---------------- CLIENT METHODS ------------------
 
@@ -489,9 +450,6 @@ class P2PService {
           if (_myP2pId == null || _myP2pId == "HOST") {
             _myP2pId = assignedId;
             debugPrint("👺 Assigned P2P ID: $_myP2pId");
-            if (isHost) {
-              updateHostDeviceId(_myP2pId!);
-            }
           }
           break;
 
@@ -576,6 +534,9 @@ class P2PService {
       debugPrint(
         "🔄 Syncing member: ${client.username} (ID: ${client.id}, Host: ${client.isHost})",
       );
+      
+      // Skip the local device so it doesn't show up in the members list
+      if (client.id == _myP2pId) continue;
       if (_members.any((m) => m.deviceId == client.id)) continue;
 
       _members.add(

@@ -59,28 +59,35 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
     try {
       final db = DatabaseHelper.instance;
 
+      // Try to resolve network id in local DB
+      final network = await db.getNetworkByName(networkName);
+      int? networkId = network == null ? null : network['network_id'] as int?;
+
       // If no network exists locally, create a local record so that messages
       // can be persisted on this device as well (host and clients).
-      if (p2pService.currentUser != null) {
+      if (networkId == null && p2pService.currentUser != null) {
         try {
-          final networkId = await db.createNetwork(
+          networkId = await db.createNetwork(
             networkName: networkName,
             hostDeviceId: p2pService.currentUser!.deviceId,
-          );
-
-          // Ensure *this* device exists in the local DB.
-          await db.upsertDevice(
-            deviceId: p2pService.currentUser!.deviceId,
-            name: p2pService.currentUser!.name,
-            status: p2pService.currentUser!.status,
-            isHost: p2pService.isHost ? 1 : 0,
-            avatar: p2pService.currentUser!.avatarLetter,
-            color: p2pService.currentUser!.avatarColor.value.toString(),
           );
         } catch (e) {
           // Log but continue — failure to persist shouldn't break the UI
           debugPrint('Failed to persist created network (local mirror): $e');
         }
+      }
+
+      // Ensure *this* device exists in the local DB if we have a networkId.
+      if (networkId != null && p2pService.currentUser != null) {
+        await db.upsertDevice(
+          deviceId: p2pService.currentUser!.deviceId,
+          networkId: networkId,
+          name: p2pService.currentUser!.name,
+          status: p2pService.currentUser!.status,
+          isHost: p2pService.isHost ? 1 : 0,
+          avatar: p2pService.currentUser!.avatarLetter,
+          color: p2pService.currentUser!.avatarColor.value.toString(),
+        );
       }
 
       // Broadcast profile to all peers when joining network
@@ -92,8 +99,11 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           NetworkDashboardLoaded(
             networkName: networkName,
             isServer: p2pService.isHost,
-            connectedDevices: p2pService.members,
+            connectedDevices: p2pService.members
+                .where((d) => d.deviceId != p2pService.myP2pId && d.deviceId != p2pService.currentUser?.deviceId)
+                .toList(),
             maxConnections: p2pService.maxMembers,
+            networkId: networkId,
           ),
         );
       }
@@ -154,10 +164,11 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
             }
 
             // Only do expensive upserts if properties changed
-            if (hasChanges) {
+            if (hasChanges && networkId != null) {
               for (var member in members) {
                 await db.upsertDevice(
                   deviceId: member.deviceId,
+                  networkId: networkId,
                   name: member.name,
                   status: member.status,
                   signalStrength: member.signalStrength,
@@ -168,7 +179,9 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
               }
             }
 
-            final devices = p2pService.members;
+            final devices = p2pService.members
+                .where((d) => d.deviceId != p2pService.myP2pId && d.deviceId != p2pService.currentUser?.deviceId)
+                .toList();
             // Only emit if state actually changed
             // Reuse currentState from earlier check (state won't change in same function)
             if (currentState is! NetworkDashboardLoaded) {
@@ -179,6 +192,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   isServer: p2pService.isHost,
                   connectedDevices: devices, // Includes updated timestamps
                   maxConnections: p2pService.maxMembers,
+                  networkId: networkId,
                 ),
               );
             } else if (currentState.connectedDevices.length != devices.length ||
@@ -193,6 +207,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   isServer: p2pService.isHost,
                   connectedDevices: devices, // Includes updated timestamps
                   maxConnections: p2pService.maxMembers,
+                  networkId: networkId,
                 ),
               );
             }
@@ -211,16 +226,21 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                 NetworkDashboardLoaded(
                   networkName: networkName,
                   isServer: p2pService.isHost,
-                  connectedDevices: members,
+                  connectedDevices: members
+                      .where((d) => d.deviceId != p2pService.myP2pId && d.deviceId != p2pService.currentUser?.deviceId)
+                      .toList(),
                   maxConnections: p2pService.maxMembers,
                   networkId: null,
                 ),
               );
             } else {
+              final newMembers = members
+                  .where((d) => d.deviceId != p2pService.myP2pId && d.deviceId != p2pService.currentUser?.deviceId)
+                  .toList();
               final currentIds = currentState.connectedDevices
                   .map((d) => d.deviceId)
                   .toSet();
-              final newIds = members.map((m) => m.deviceId).toSet();
+              final newIds = newMembers.map((m) => m.deviceId).toSet();
 
               // Only emit if device list changed
               if (currentIds.length != newIds.length ||
@@ -229,7 +249,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
                   NetworkDashboardLoaded(
                     networkName: networkName,
                     isServer: p2pService.isHost,
-                    connectedDevices: members,
+                    connectedDevices: newMembers,
                     maxConnections: p2pService.maxMembers,
                     networkId: null,
                   ),
@@ -283,6 +303,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
           if (s.networkId != null) {
             final sender = p2pService.currentUser?.deviceId;
             await db.insertMessage(
+              networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: null,
               messageContent: message,
@@ -311,6 +332,7 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
             final sender = p2pService.currentUser?.deviceId;
             final db = DatabaseHelper.instance;
             await db.insertMessage(
+              networkId: s.networkId!,
               senderDeviceId: sender,
               receiverDeviceId: deviceId,
               messageContent: message,
@@ -339,7 +361,10 @@ class NetworkDashboardCubit extends Cubit<NetworkDashboardState> {
       // 3. Update UI state immediately by refreshing from DB
       final s = state;
       if (s is NetworkDashboardLoaded && s.networkId != null) {
-        final devices = await DatabaseHelper.instance.getDevicesByNetworkId(s.networkId!);
+        final allDevices = await DatabaseHelper.instance.getDevicesByNetworkId(s.networkId!);
+        final devices = allDevices
+            .where((d) => d.deviceId != p2pService.myP2pId && d.deviceId != p2pService.currentUser?.deviceId)
+            .toList();
         emit(s.copyWith(connectedDevices: devices));
       }
     } catch (e) {

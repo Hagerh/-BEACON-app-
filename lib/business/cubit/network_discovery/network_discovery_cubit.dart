@@ -69,6 +69,7 @@ class NetworkCubit extends Cubit<NetworkState> {
         // Upsert the host device entry locally (mark as host)
         await db.upsertDevice(
           deviceId: device.deviceAddress,
+          networkId: networkId,
           name: device.deviceName,
           status: 'Active',
           isHost: 1,

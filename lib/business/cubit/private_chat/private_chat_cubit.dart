@@ -238,16 +238,23 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       }
       if (networkId == null) return message;
 
-      await db.upsertDevice(deviceId: peerId!, name: peerId, status: 'Active');
+      await db.upsertDevice(
+        deviceId: peerId!,
+        networkId: networkId,
+        name: peerId,
+        status: 'Active',
+      );
       final localName =
           (await db.getUserProfile(currentId!))?.name ?? 'Local Device';
       await db.upsertDevice(
         deviceId: currentId,
+        networkId: networkId,
         name: localName,
         status: 'Active',
       );
 
       final id = await db.insertMessage(
+        networkId: networkId,
         senderDeviceId: peerId,
         receiverDeviceId: currentId,
         messageContent: message.text,
@@ -272,6 +279,7 @@ class PrivateChatCubit extends Cubit<PrivateChatState> {
       if (state.networkId == null) return -1;
 
       return await db.insertMessage(
+        networkId: state.networkId!,
         senderDeviceId: state.currentDeviceId,
         receiverDeviceId: state.recipientDeviceId,
         messageContent: message.text,

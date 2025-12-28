@@ -38,7 +38,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 2,
+      version: 4,
       password: encryptionKey, // SQLCipher encryption key
       onConfigure: (db) async {
         // Enable foreign keys
@@ -113,12 +113,14 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE Messages (
         message_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        network_id INTEGER NOT NULL,
         sender_device_id TEXT,
         receiver_device_id TEXT,
         message_content TEXT NOT NULL,
         is_mine INTEGER NOT NULL DEFAULT 0,
         is_delivered INTEGER NOT NULL DEFAULT 0,
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(network_id) REFERENCES Networks(network_id) ON DELETE CASCADE,
         FOREIGN KEY(sender_device_id) REFERENCES Devices(device_id) ON DELETE CASCADE,
         FOREIGN KEY(receiver_device_id) REFERENCES Devices(device_id) ON DELETE CASCADE
         
@@ -194,6 +196,31 @@ class DatabaseHelper {
           FOREIGN KEY(requester_device_id) REFERENCES Devices(device_id) ON DELETE SET NULL
         )
       ''');
+    }
+
+    if (oldVersion < 3) {
+      // Migration for version 3: Add unread and is_host to Devices
+      final devicesColumns = await db.rawQuery('PRAGMA table_info(Devices)');
+      final hasIsHost = devicesColumns.any((c) => c['name']?.toString() == 'is_host');
+      if (!hasIsHost) {
+        await db.execute('ALTER TABLE Devices ADD COLUMN is_host INTEGER NOT NULL DEFAULT 0');
+      }
+      
+      final hasUnread = devicesColumns.any((c) => c['name']?.toString() == 'unread');
+      if (!hasUnread) {
+        await db.execute('ALTER TABLE Devices ADD COLUMN unread INTEGER DEFAULT 0');
+      }
+    }
+
+    if (oldVersion < 4) {
+      // Migration for version 4: Ensure Messages has network_id
+      final messagesColumns = await db.rawQuery('PRAGMA table_info(Messages)');
+      final hasNetworkId = messagesColumns.any((c) => c['name']?.toString() == 'network_id');
+      
+      if (!hasNetworkId) {
+        // Add with a default value to satisfy NOT NULL constraint
+        await db.execute('ALTER TABLE Messages ADD COLUMN network_id INTEGER NOT NULL DEFAULT 1');
+      }
     }
   }
 
@@ -294,6 +321,18 @@ class DatabaseHelper {
     return networkId;
   }
 
+  // Get network by name
+  Future<Map<String, dynamic>?> getNetworkByName(String networkName) async {
+    final db = await instance.database;
+    final networks = await db.query(
+      'Networks',
+      where: 'network_name = ?',
+      whereArgs: [networkName],
+      limit: 1,
+    );
+    return networks.isEmpty ? null : networks.first;
+  }
+
   // Try to resolve a network id by a device id (returns null if not known)
   Future<int?> getNetworkIdByDeviceId(String deviceId) async {
     final db = await instance.database;
@@ -334,8 +373,31 @@ class DatabaseHelper {
     };
 
     if (existingDevices.isEmpty) {
-      // Insert new device
-      await db.insert('Devices', deviceData);
+      // Try to find an existing network to attach to, or use a default
+      final networks = await db.query('Networks', limit: 1, orderBy: 'created_at DESC');
+
+      if (networks.isNotEmpty) {
+        deviceData['network_id'] = networks.first['network_id'];
+        deviceData['is_host'] = 0;
+        await db.insert('Devices', deviceData);
+      } else {
+        // Create a default network for the user if none exists
+        final newNetworkId = await db.insert('Networks', {
+          'network_name': 'Local Self',
+          'status': 'Offline',
+        });
+        deviceData['network_id'] = newNetworkId;
+        deviceData['is_host'] = 1; // User is host of their own network
+        await db.insert('Devices', deviceData);
+
+        // Update network to reference this device as host
+        await db.update(
+          'Networks',
+          {'host_device_id': profile.deviceId},
+          where: 'network_id = ?',
+          whereArgs: [newNetworkId],
+        );
+      }
     } else {
       // Update existing device
       await db.update(
@@ -383,6 +445,7 @@ class DatabaseHelper {
   // Insert or update a device in a network
   Future<void> upsertDevice({
     required String deviceId,
+    required int networkId,
     required String name,
     required String status,
     int? signalStrength,
@@ -401,6 +464,7 @@ class DatabaseHelper {
 
     final deviceData = <String, dynamic>{
       'device_id': deviceId,
+      'network_id': networkId,
       'name': name,
       'status': status,
       'last_seen_at': DateTime.now().toIso8601String(),
@@ -409,6 +473,7 @@ class DatabaseHelper {
     if (signalStrength != null) deviceData['signal_strength'] = signalStrength;
     if (avatar != null) deviceData['avatar'] = avatar;
     if (color != null) deviceData['color'] = color;
+    if (isHost != null) deviceData['is_host'] = isHost;
 
     if (existing.isEmpty) {
       await db.insert('Devices', deviceData);
@@ -420,6 +485,23 @@ class DatabaseHelper {
         whereArgs: [deviceId],
       );
     }
+  }
+
+  // Get devices by network ID
+  Future<List<DeviceDetail>> getDevicesByNetworkId(
+    int networkId, {
+    int? limit,
+  }) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      'Devices',
+      where: 'network_id = ?',
+      whereArgs: [networkId],
+      limit: limit,
+    );
+    return rows
+        .map((r) => DeviceDetail.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   // Update device last seen timestamp
@@ -435,6 +517,7 @@ class DatabaseHelper {
 
   // Insert a new message
   Future<int> insertMessage({
+    required int networkId,
     String? senderDeviceId,
     String? receiverDeviceId,
     required String messageContent,
@@ -444,6 +527,7 @@ class DatabaseHelper {
     final db = await instance.database;
 
     return await db.insert('Messages', {
+      'network_id': networkId,
       'sender_device_id': senderDeviceId,
       'receiver_device_id': receiverDeviceId,
       'message_content': messageContent,
